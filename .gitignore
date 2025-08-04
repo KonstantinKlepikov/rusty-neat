@@ -18,3 +18,5 @@ wasm-pack.log
 
 # cpp neat
 cneat/
+research/*.*
+!research/.gitkeep
