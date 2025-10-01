@@ -1,17 +1,17 @@
 pub mod genome;
+pub mod hyperneat;
 pub mod network;
-pub mod population;
-pub mod species;
 pub mod parameters;
+pub mod population;
 pub mod random;
 pub mod serialization;
-pub mod hyperneat;
+pub mod species;
 
 pub use genome::*;
 pub use network::*;
-pub use population::*;
-pub use species::*;
 pub use parameters::*;
+pub use population::*;
 pub use random::*;
+pub use species::*;
 // pub use serialization::*;
 pub use hyperneat::*;

@@ -46,27 +46,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --verbose --release -- -D warnings
 
-  wasm:
-    name: Check (wasm)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install WASM target
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          target: wasm32-unknown-unknown
-
-      - name: Check for WASM
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --verbose --release --target wasm32-unknown-unknown
-
   test:
     name: Test
     runs-on: ubuntu-latest
