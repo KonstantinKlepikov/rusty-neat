@@ -4,5 +4,5 @@
 /// * Calling the run function in lib.rs
 /// * Handling the error if the above returns an error
 pub fn main() {
-    rust_template::run();
+    // rusty_neat::run();
 }

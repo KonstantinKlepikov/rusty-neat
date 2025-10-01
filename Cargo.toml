@@ -1,16 +1,14 @@
 [package]
-name = "rust-template"
+name = "rusty-neat"
 version = "0.1.0"
-authors = ["zaszi <admin@zaszi.net>"]
-edition = "2021"
-description = "A project template for Rust, helping to structure your projects according to best practices."
-documentation = "https://github.com/zaszi/rust-template"
+authors = ["Konstantin Klepikov <oformleno@gmail.com>"]
+edition = "2024"
+description = "Multy-NEAT rust implementation."
+documentation = "https://github.com/KonstantinKlepikov/rusty-neat"
 readme = "README.md"
-homepage = "https://github.com/zaszi/rust-template"
-repository = "https://github.com/zaszi/rust-template"
+homepage = "https://github.com/KonstantinKlepikov/rusty-neat"
+repository = "https://github.com/KonstantinKlepikov/rusty-neat"
 license-file = "LICENSE"
-keywords = ["template", "wasm"]
-categories = ["rust-patterns", "wasm"]
 publish = false
 
 [lib]
@@ -20,15 +18,4 @@ crate-type = ["cdylib", "rlib"]
 default = []
 
 [dependencies]
-wasm-bindgen = "0.2"
-
-[dev-dependencies]
-wasm-bindgen-test = "0.3"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1"
-wee_alloc = "0.4"
-
-[profile.release]
-lto = true
-panic = "abort"
+rand = "0.9.2"
