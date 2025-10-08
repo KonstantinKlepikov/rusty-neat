@@ -174,11 +174,149 @@ impl Ord for Genome {
     }
 }
 
+impl Genome {
+    /// Get neuron by its ID
+    pub fn get_neuron_by_id(&self, id: u64) -> Option<&NeuronGene> {
+        self.neuron_genes.iter().find(|n| n.id == id)
+    }
+
+    /// Get neuron by its index
+    pub fn get_neuron_by_index(&self, idx: usize) -> Option<&NeuronGene> {
+        self.neuron_genes.get(idx)
+    }
+
+    /// Get link by its innovation ID (assuming 'from' is innovation ID)
+    pub fn get_link_by_innov_id(&self, innov_id: u64) -> Option<&LinkGene> {
+        self.link_genes.iter().find(|l| l.from == innov_id)
+    }
+
+    /// Get link by its index
+    pub fn get_link_by_index(&self, idx: usize) -> Option<&LinkGene> {
+        self.link_genes.get(idx)
+    }
+
+    /// Get neuron index by ID
+    pub fn get_neuron_index(&self, id: u64) -> Option<usize> {
+        self.neuron_genes.iter().position(|n| n.id == id)
+    }
+
+    /// Get link index by innovation ID (assuming 'from' is innovation ID)
+    pub fn get_link_index(&self, innov_id: u64) -> Option<usize> {
+        self.link_genes.iter().position(|l| l.from == innov_id)
+    }
+
+    /// Number of neurons
+    pub fn num_neurons(&self) -> usize {
+        self.neuron_genes.len()
+    }
+
+    /// Number of links
+    pub fn num_links(&self) -> usize {
+        self.link_genes.len()
+    }
+
+    /// Number of inputs
+    pub fn num_inputs(&self) -> usize {
+        self.num_inputs
+    }
+
+    /// Number of outputs
+    pub fn num_outputs(&self) -> usize {
+        self.num_outputs
+    }
+
+    /// Set neuron X and Y coordinates
+    pub fn set_neuron_xy(&mut self, idx: usize, x: f64, y: f64) {
+        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_xy");
+        self.neuron_genes[idx].x = x;
+        self.neuron_genes[idx].y = y;
+    }
+
+    /// Set neuron X coordinate
+    pub fn set_neuron_x(&mut self, idx: usize, x: f64) {
+        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_x");
+        self.neuron_genes[idx].x = x;
+    }
+
+    /// Set neuron Y coordinate
+    pub fn set_neuron_y(&mut self, idx: usize, y: f64) {
+        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_y");
+        self.neuron_genes[idx].y = y;
+    }
+
+    /// Get fitness
+    pub fn get_fitness(&self) -> f64 {
+        self.fitness
+    }
+
+    /// Set fitness
+    pub fn set_fitness(&mut self, fitness: f64) {
+        self.fitness = fitness;
+    }
+
+    /// Get adjusted fitness
+    pub fn get_adj_fitness(&self) -> f64 {
+        self.adjusted_fitness
+    }
+
+    /// Set adjusted fitness
+    pub fn set_adj_fitness(&mut self, adj_fitness: f64) {
+        self.adjusted_fitness = adj_fitness;
+    }
+
+    /// Get genome ID
+    pub fn get_id(&self) -> u64 {
+        self.id
+    }
+
+    /// Set genome ID
+    pub fn set_id(&mut self, id: u64) {
+        self.id = id;
+    }
+
+    /// Get depth
+    pub fn get_depth(&self) -> usize {
+        self.depth
+    }
+
+    /// Set depth
+    pub fn set_depth(&mut self, depth: usize) {
+        self.depth = depth;
+    }
+
+    /// Get offspring amount
+    pub fn get_offspring_amount(&self) -> f64 {
+        self.offspring_amount
+    }
+
+    /// Set offspring amount
+    pub fn set_offspring_amount(&mut self, amount: f64) {
+        self.offspring_amount = amount;
+    }
+
+    /// Is genome evaluated
+    pub fn is_evaluated(&self) -> bool {
+        self.evaluated
+    }
+
+    /// Set evaluated flag
+    pub fn set_evaluated(&mut self) {
+        self.evaluated = true;
+    }
+
+    /// Reset evaluated flag
+    pub fn reset_evaluated(&mut self) {
+        self.evaluated = false;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronGene {
     pub id: u64,
     pub neuron_type: NeuronType,
     pub activation: ActivationFunction,
+    pub y: f64,
+    pub x: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
