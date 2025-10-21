@@ -1,4 +1,5 @@
 pub mod genome;
+pub mod genes;
 pub mod hyperneat;
 pub mod network;
 pub mod parameters;

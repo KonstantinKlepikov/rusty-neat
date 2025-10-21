@@ -25,17 +25,10 @@ use std::cell::RefCell;
 // (In Rust, use itertools or custom code for variance, mean, etc.)
 
 use itertools::Itertools;
-use crate::network::{ActivationFunction, NeuronType, NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
-use std::collections::HashMap as StdHashMap;
+use crate::network::{ActivationFunction, NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
+use crate::genes::{TraitValue, NeuronGene, LinkGene};
 
-/// Trait value container (simplified)
-#[derive(Debug, Clone, PartialEq)]
-pub enum TraitValue {
-    Int(i64),
-    Float(f64),
-    Str(String),
-    Bool(bool),
-}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
@@ -189,9 +182,9 @@ impl Genome {
         self.neuron_genes.get(idx)
     }
 
-    /// Get link by its innovation ID (assuming 'from' is innovation ID)
+    /// Get link by its innovation ID
     pub fn get_link_by_innov_id(&self, innov_id: u64) -> Option<&LinkGene> {
-        self.link_genes.iter().find(|l| l.from == innov_id)
+        self.link_genes.iter().find(|l| l.innovation_id == innov_id)
     }
 
     /// Get link by its index
@@ -204,9 +197,9 @@ impl Genome {
         self.neuron_genes.iter().position(|n| n.id == id)
     }
 
-    /// Get link index by innovation ID (assuming 'from' is innovation ID)
+    /// Get link index by innovation ID
     pub fn get_link_index(&self, innov_id: u64) -> Option<usize> {
-        self.link_genes.iter().position(|l| l.from == innov_id)
+        self.link_genes.iter().position(|l| l.innovation_id == innov_id)
     }
 
     /// Number of neurons
@@ -229,21 +222,21 @@ impl Genome {
         self.num_outputs
     }
 
-    /// Set neuron X and Y coordinates
-    pub fn set_neuron_xy(&mut self, idx: usize, x: f64, y: f64) {
+    /// Set neuron X and Y coordinates (integers, as in C++ original)
+    pub fn set_neuron_xy(&mut self, idx: usize, x: i32, y: i32) {
         assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_xy");
         self.neuron_genes[idx].x = x;
         self.neuron_genes[idx].y = y;
     }
 
     /// Set neuron X coordinate
-    pub fn set_neuron_x(&mut self, idx: usize, x: f64) {
+    pub fn set_neuron_x(&mut self, idx: usize, x: i32) {
         assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_x");
         self.neuron_genes[idx].x = x;
     }
 
     /// Set neuron Y coordinate
-    pub fn set_neuron_y(&mut self, idx: usize, y: f64) {
+    pub fn set_neuron_y(&mut self, idx: usize, y: i32) {
         assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_y");
         self.neuron_genes[idx].y = y;
     }
@@ -327,21 +320,20 @@ impl Genome {
             let n = PhNeuron {
                 activesum: 0.0,
                 activation: 0.0,
-                // genome currently doesn't store these fields, use reasonable defaults
-                a: 1.0,
-                b: 0.0,
-                timeconst: 1.0,
-                bias: 0.0,
+                a: ng.a,
+                b: ng.b,
+                timeconst: ng.timeconstant,
+                bias: ng.bias,
                 membrane_potential: 0.0,
-                activation_function_type: ng.activation,
-                x: ng.x,
-                y: ng.y,
+                activation_function_type: ng.activation_function,
+                x: ng.x as f64,
+                y: ng.y as f64,
                 z: 0.0,
                 sx: 0.0,
                 sy: 0.0,
                 sz: 0.0,
                 substrate_coords: Vec::new(),
-                split_y: ng.y,
+                split_y: ng.split_y,
                 neuron_type: ng.neuron_type,
                 sensitivity_matrix: Vec::new(),
             };
@@ -352,15 +344,25 @@ impl Genome {
         // Fill the net with the connections
         for lg in &self.link_genes {
             // find source/target neuron indices in the phenotype (by neuron id)
-            if let (Some(src_idx), Some(dst_idx)) = (self.get_neuron_index(lg.from), self.get_neuron_index(lg.to)) {
+            if let (Some(src_idx), Some(dst_idx)) = (self.get_neuron_index(lg.from_neuron_id), self.get_neuron_index(lg.to_neuron_id)) {
+                // extract hebbian params from traits if present
+                let mut hebb_rate = 0.3_f64;
+                let mut hebb_pre_rate = 0.1_f64;
+                if let Some(TraitValue::Float(v)) = lg.traits.get("hebb_rate") {
+                    hebb_rate = *v;
+                }
+                if let Some(TraitValue::Float(v)) = lg.traits.get("hebb_pre_rate") {
+                    hebb_pre_rate = *v;
+                }
+
                 let c = PhConnection {
                     source_neuron_idx: src_idx,
                     target_neuron_idx: dst_idx,
                     weight: lg.weight,
                     signal: 0.0,
-                    recur_flag: false,
-                    hebb_rate: 0.3,
-                    hebb_pre_rate: 0.1,
+                    recur_flag: lg.is_recurrent,
+                    hebb_rate,
+                    hebb_pre_rate,
                 };
 
                 net.add_connection(c);
@@ -373,25 +375,5 @@ impl Genome {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct NeuronGene {
-    pub id: u64,
-    pub neuron_type: NeuronType,
-    pub activation: ActivationFunction,
-    pub y: f64,
-    pub x: f64,
-    /// Optional trait map for extra parameters (a, b, timeconst, bias, split_y, ...)
-    pub traits: StdHashMap<String, TraitValue>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LinkGene {
-    pub from: u64,
-    pub to: u64,
-    pub weight: f64,
-    pub enabled: bool,
-    /// Optional trait map for extra parameters (hebb_rate, hebb_pre_rate, ...)
-    pub traits: StdHashMap<String, TraitValue>,
-}
 
 
