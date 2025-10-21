@@ -23,20 +23,24 @@ use std::cell::RefCell;
 
 // For statistics/accumulators (analogue to boost::accumulators)
 // (In Rust, use itertools or custom code for variance, mean, etc.)
+
 use itertools::Itertools;
+use crate::network::{ActivationFunction, NeuronType, NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
+use std::collections::HashMap as StdHashMap;
+
+/// Trait value container (simplified)
+#[derive(Debug, Clone, PartialEq)]
+pub enum TraitValue {
+    Int(i64),
+    Float(f64),
+    Str(String),
+    Bool(bool),
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
     Perceptron = 0,
     Layered = 1,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ActivationFunction {
-    Sigmoid,
-    Tanh,
-    Relu,
-    Linear,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -310,6 +314,65 @@ impl Genome {
     }
 }
 
+impl Genome {
+    /// Build phenotype neural network from genome
+    pub fn build_phenotype(&self, net: &mut NeuralNetwork) {
+        // Clear the network
+        net.clear();
+        net.set_input_output_dimensions(self.num_inputs, self.num_outputs);
+
+        // Fill the net with the neurons
+        for ng in &self.neuron_genes {
+            // Map Genome's NeuronGene -> phenotype Neuron
+            let n = PhNeuron {
+                activesum: 0.0,
+                activation: 0.0,
+                // genome currently doesn't store these fields, use reasonable defaults
+                a: 1.0,
+                b: 0.0,
+                timeconst: 1.0,
+                bias: 0.0,
+                membrane_potential: 0.0,
+                activation_function_type: ng.activation,
+                x: ng.x,
+                y: ng.y,
+                z: 0.0,
+                sx: 0.0,
+                sy: 0.0,
+                sz: 0.0,
+                substrate_coords: Vec::new(),
+                split_y: ng.y,
+                neuron_type: ng.neuron_type,
+                sensitivity_matrix: Vec::new(),
+            };
+
+            net.add_neuron(n);
+        }
+
+        // Fill the net with the connections
+        for lg in &self.link_genes {
+            // find source/target neuron indices in the phenotype (by neuron id)
+            if let (Some(src_idx), Some(dst_idx)) = (self.get_neuron_index(lg.from), self.get_neuron_index(lg.to)) {
+                let c = PhConnection {
+                    source_neuron_idx: src_idx,
+                    target_neuron_idx: dst_idx,
+                    weight: lg.weight,
+                    signal: 0.0,
+                    recur_flag: false,
+                    hebb_rate: 0.3,
+                    hebb_pre_rate: 0.1,
+                };
+
+                net.add_connection(c);
+            }
+            else {
+                // neuron id not found in phenotype; skip this connection
+            }
+        }
+        // Note: RTRL variables and advanced features are not implemented in this prototype
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronGene {
     pub id: u64,
@@ -317,6 +380,8 @@ pub struct NeuronGene {
     pub activation: ActivationFunction,
     pub y: f64,
     pub x: f64,
+    /// Optional trait map for extra parameters (a, b, timeconst, bias, split_y, ...)
+    pub traits: StdHashMap<String, TraitValue>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -325,12 +390,8 @@ pub struct LinkGene {
     pub to: u64,
     pub weight: f64,
     pub enabled: bool,
+    /// Optional trait map for extra parameters (hebb_rate, hebb_pre_rate, ...)
+    pub traits: StdHashMap<String, TraitValue>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NeuronType {
-    Input,
-    Hidden,
-    Output,
-    Bias,
-}
+
