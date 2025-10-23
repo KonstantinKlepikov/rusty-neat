@@ -1,5 +1,6 @@
 //! Gene definitions moved out of genome.rs
 use std::collections::HashMap as StdHashMap;
+use rand::prelude::*;
 
 /// Trait value container (simplified)
 #[derive(Debug, Clone, PartialEq)]
@@ -10,7 +11,203 @@ pub enum TraitValue {
     Bool(bool),
 }
 
-use crate::network::{ActivationFunction, NeuronType};
+/// Activation function type (copied from original C++ types)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ActivationFunction {
+    SignedSigmoid,
+    UnsignedSigmoid,
+    Tanh,
+    TanhCubic,
+    SignedStep,
+    UnsignedStep,
+    SignedGauss,
+    UnsignedGauss,
+    Abs,
+    SignedSine,
+    UnsignedSine,
+    Linear,
+    Relu,
+    Softplus,
+}
+
+/// Neuron type (copied from original C++ types)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NeuronType {
+    Input,
+    Output,
+    Hidden,
+    Bias,
+}
+
+/// Simplified Gene struct mirroring core behavior from the C++ Gene class.
+///
+/// Assumptions / simplifications vs original C++ implementation:
+/// - The full Trait / TraitParameters system from C++ is not ported here.
+///   Instead `TraitValue` holds basic types (Int/Float/Str/Bool).
+/// - `InitTraits` in C++ uses detailed TraitParameters and RNG-based
+///   initialisation; here we provide helpers to mate/mutate traits using
+///   a simplified probabilistic behaviour.
+/// - This is intentionally lightweight: it provides compatibility points
+///   for genome-level operations (mate/mutate/distance) while leaving
+///   full parameter parsing to another module if needed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Gene {
+    /// Map of trait name -> value
+    pub traits: StdHashMap<String, TraitValue>,
+}
+
+impl Gene {
+    /// Create empty gene
+    pub fn new() -> Self {
+        Gene {
+            traits: StdHashMap::new(),
+        }
+    }
+
+    /// Get trait by name
+    pub fn get_trait(&self, name: &str) -> Option<&TraitValue> {
+        self.traits.get(name)
+    }
+
+    /// Set trait by name
+    pub fn set_trait(&mut self, name: &str, value: TraitValue) {
+        self.traits.insert(name.to_string(), value);
+    }
+
+    /// Mate traits with another parent. Simplified logic:
+    /// - If types mismatch, panic (mirrors C++ behaviour choice to error).
+    /// - For numeric types we either pick one parent's value at random or
+    ///   average them (50% chance each).
+    /// - For strings/bools pick either parent at random.
+    pub fn mate_traits(&mut self, other: &Gene, rng: &mut impl Rng) {
+        for (k, v_other) in &other.traits {
+            match (self.traits.get(k), v_other) {
+                (Some(v_mine), v_other) => {
+                    // types must match
+                    match (v_mine, v_other) {
+                        (TraitValue::Int(mi), TraitValue::Int(oi)) => {
+                            if rng.random::<f64>() < 0.5 {
+                                        self.traits.insert(k.clone(), TraitValue::Int(*mi));
+                                    } else if rng.random::<f64>() < 0.5 {
+                                        self.traits.insert(k.clone(), TraitValue::Int(*oi));
+                                    } else {
+                                        self.traits.insert(k.clone(), TraitValue::Int((mi + oi) / 2));
+                                    }
+                        }
+                        (TraitValue::Float(mf), TraitValue::Float(of)) => {
+                            if rng.random::<f64>() < 0.5 {
+                                self.traits.insert(k.clone(), TraitValue::Float(*mf));
+                            } else if rng.random::<f64>() < 0.5 {
+                                self.traits.insert(k.clone(), TraitValue::Float(*of));
+                            } else {
+                                self.traits.insert(k.clone(), TraitValue::Float((*mf + *of) / 2.0));
+                            }
+                        }
+                        (TraitValue::Str(_), TraitValue::Str(_)) => {
+                            if rng.random::<f64>() < 0.5 {
+                                // keep mine
+                            } else {
+                                self.traits.insert(k.clone(), v_other.clone());
+                            }
+                        }
+                        (TraitValue::Bool(_), TraitValue::Bool(_)) => {
+                            if rng.random::<f64>() < 0.5 {
+                                // keep mine
+                            } else {
+                                self.traits.insert(k.clone(), v_other.clone());
+                            }
+                        }
+                        _ => {
+                            // Types mismatch: follow C++ choice and panic; caller
+                            // should ensure trait types match before mating.
+                            panic!("Trait types mismatch during mating for key {}", k);
+                        }
+                    }
+                }
+                (None, v_other) => {
+                    // other parent has trait we don't; copy it
+                    self.traits.insert(k.clone(), v_other.clone());
+                }
+            }
+        }
+    }
+
+    /// Mutate traits according to a per-trait probability map.
+    /// `mutation_probs` maps trait name -> probability in [0,1].
+    /// Returns true if any trait mutated.
+    pub fn mutate_traits(&mut self, mutation_probs: &StdHashMap<String, f64>, rng: &mut impl Rng) -> bool {
+        let mut did_mutate = false;
+        for (name, prob) in mutation_probs {
+                    if rng.random::<f64>() < *prob {
+                if let Some(tv) = self.traits.get_mut(name) {
+                    match tv {
+                        TraitValue::Int(v) => {
+                            // small integer perturbation
+                            let delta = (rng.random_range(-2i64..=2i64)) as i64;
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Float(v) => {
+                            // Gaussian-like perturbation
+                            let delta = (rng.random::<f64>() - 0.5) * 0.2 * ((*v).abs().max(1.0));
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Str(s) => {
+                            // no sensible mutation defined for strings; flip to empty
+                            *s = String::new();
+                            did_mutate = true;
+                        }
+                        TraitValue::Bool(b) => {
+                            *b = !*b;
+                            did_mutate = true;
+                        }
+                    }
+                } else {
+                    // trait not present but mutation probability set — ignore
+                }
+            }
+        }
+
+        did_mutate
+    }
+
+    /// Compute simple trait distances between this gene and `other`.
+    /// Numeric traits return absolute difference; string traits return 0/1.
+    pub fn get_trait_distances(&self, other: &Gene) -> StdHashMap<String, f64> {
+        let mut dist: StdHashMap<String, f64> = StdHashMap::new();
+        for (k, v_other) in &other.traits {
+            if let Some(v_my) = self.traits.get(k) {
+                match (v_my, v_other) {
+                    (TraitValue::Int(a), TraitValue::Int(b)) => {
+                        dist.insert(k.clone(), ((*a - *b).abs()) as f64);
+                    }
+                    (TraitValue::Float(a), TraitValue::Float(b)) => {
+                        dist.insert(k.clone(), (a - b).abs());
+                    }
+                    (TraitValue::Str(a), TraitValue::Str(b)) => {
+                        dist.insert(k.clone(), if a == b { 0.0 } else { 1.0 });
+                    }
+                    (TraitValue::Bool(a), TraitValue::Bool(b)) => {
+                        dist.insert(k.clone(), if a == b { 0.0 } else { 1.0 });
+                    }
+                    _ => {
+                        // Type mismatch - skip or set large distance
+                        dist.insert(k.clone(), f64::INFINITY);
+                    }
+                }
+            }
+        }
+
+        dist
+    }
+}
+
+impl Default for Gene {
+    fn default() -> Self {
+        Gene::new()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronGene {

@@ -1,32 +1,6 @@
 //! Phenotype module (neural network)
 
-/// Activation function type (stub, expand as needed)
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ActivationFunction {
-    SignedSigmoid,
-    UnsignedSigmoid,
-    Tanh,
-    TanhCubic,
-    SignedStep,
-    UnsignedStep,
-    SignedGauss,
-    UnsignedGauss,
-    Abs,
-    SignedSine,
-    UnsignedSine,
-    Linear,
-    Relu,
-    Softplus,
-}
-
-/// Neuron type (stub, expand as needed)
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum NeuronType {
-    Input,
-    Output,
-    Hidden,
-    Bias,
-}
+use crate::genes::{ActivationFunction, NeuronType};
 
 
 /// Connection between neurons (phenotype)

@@ -25,8 +25,8 @@ use std::cell::RefCell;
 // (In Rust, use itertools or custom code for variance, mean, etc.)
 
 use itertools::Itertools;
-use crate::network::{ActivationFunction, NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
-use crate::genes::{TraitValue, NeuronGene, LinkGene};
+use crate::network::{NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
+use crate::genes::{TraitValue, NeuronGene, LinkGene, ActivationFunction};
 
 
 
