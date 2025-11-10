@@ -111,4 +111,75 @@ impl NeuralNetwork {
         self.num_inputs = 0;
         self.num_outputs = 0;
     }
+
+    /// Reset neuron activations / activesums (similar to Flush in C++ impl)
+    pub fn flush(&mut self) {
+        for n in &mut self.neurons {
+            n.activesum = 0.0;
+            n.activation = 0.0;
+            n.membrane_potential = 0.0;
+        }
+    }
+
+    /// Provide inputs to the network (fills first `num_inputs` neurons' activation)
+    pub fn input(&mut self, inputs: Vec<f64>) {
+        let take = usize::min(inputs.len(), self.num_inputs);
+        for i in 0..take {
+            if i < self.neurons.len() {
+                self.neurons[i].activation = inputs[i];
+            }
+        }
+    }
+
+    /// Single activation step: propagate signals through connections and apply activation functions
+    pub fn activate(&mut self) {
+        // accumulate inputs
+        for conn in &self.connections {
+            if conn.source_neuron_idx < self.neurons.len() && conn.target_neuron_idx < self.neurons.len() {
+                let src = self.neurons[conn.source_neuron_idx].activation;
+                self.neurons[conn.target_neuron_idx].activesum += src * conn.weight;
+            }
+        }
+
+        // apply activation for non-input neurons
+        for idx in self.num_inputs..self.neurons.len() {
+            let n = &mut self.neurons[idx];
+            let x = n.activesum + n.bias;
+            n.activation = apply_activation(n.activation_function_type, x, n.a, n.b);
+            // reset activesum for next cycle
+            n.activesum = 0.0;
+        }
+    }
+
+    /// Return outputs (last `num_outputs` neurons are treated as outputs)
+    pub fn output(&self) -> Vec<f64> {
+        let mut out = Vec::new();
+        if self.num_outputs == 0 { return out; }
+        // assume outputs are placed after inputs; original ordering depends on genome
+        // Here we pick the last `num_outputs` neurons
+        let start = self.neurons.len().saturating_sub(self.num_outputs);
+        for i in start..self.neurons.len() {
+            out.push(self.neurons[i].activation);
+        }
+        out
+    }
+}
+
+fn apply_activation(ftype: crate::genes::ActivationFunction, x: f64, _a: f64, _b: f64) -> f64 {
+    match ftype {
+        crate::genes::ActivationFunction::SignedSigmoid => {
+            // classic NEAT signed sigmoid approximation
+            let v = 1.0 / (1.0 + (-4.924273 * x).exp());
+            2.0 * v - 1.0
+        }
+        crate::genes::ActivationFunction::UnsignedSigmoid => {
+            1.0 / (1.0 + (-4.924273 * x).exp())
+        }
+        crate::genes::ActivationFunction::Tanh => x.tanh(),
+        crate::genes::ActivationFunction::Linear => x,
+        crate::genes::ActivationFunction::Relu => if x > 0.0 { x } else { 0.0 },
+        crate::genes::ActivationFunction::Softplus => (1.0 + x.exp()).ln(),
+        // fallback to tanh for other types for now
+        _ => x.tanh(),
+    }
 }

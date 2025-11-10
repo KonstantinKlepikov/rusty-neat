@@ -21,6 +21,9 @@
       - [x] Конструкторы и базовые методы
       - [x] Доступ к генам и параметрам
       - [ ] Построение фенотипа
+        - [x] `BuildPhenotype(NeuralNetwork&)`
+        - [x] `BuildHyperNEATPhenotype(NeuralNetwork&, Substrate&)`
+        - [ ] `DerivePhenotypicChanges(NeuralNetwork&)`
   - [ ] Перенесите алгоритмы эволюции, мутаций, кроссовера, расчёта фитнеса.
   - [ ] Реализуйте вспомогательные функции (генераторы случайных чисел, сериализацию).
 
