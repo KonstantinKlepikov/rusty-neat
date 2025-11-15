@@ -67,7 +67,7 @@ pub struct NeuralNetwork {
     pub neurons: Vec<Neuron>,
     pub connections: Vec<Connection>, // array size - number of connections
     // RTRL variables
-    total_error: f64,
+    _total_error: f64,
     total_weight_change: Vec<f64>,
 }
 
@@ -78,7 +78,7 @@ impl NeuralNetwork {
             num_outputs: 0,
             neurons: Vec::new(),
             connections: Vec::new(),
-            total_error: 0.0,
+            _total_error: 0.0,
             total_weight_change: Vec::new(),
         }
     }

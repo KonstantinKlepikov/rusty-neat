@@ -13,18 +13,24 @@
   - [x] Определите основные модули и структуры данных в стиле Rust (структуры, трейты, enum).
 
 - [ ] Постепенное переписывание модулей
-  - [ ] Начните с базовых структур данных (`Genome`, `Network`, `Population` и т.д.).
-    - [ ] Genome
+  - [x] Начните с базовых структур данных (`Genome`, `Network`, `Population` и т.д.).
+    - [x] Genome
       - [x] GenomeSeedType
       - [x] GenomeInitStruct
       - [x] Genome
       - [x] Конструкторы и базовые методы
       - [x] Доступ к генам и параметрам
-      - [ ] Построение фенотипа
+      - [x] Построение фенотипа
         - [x] `BuildPhenotype(NeuralNetwork&)`
         - [x] `BuildHyperNEATPhenotype(NeuralNetwork&, Substrate&)`
-        - [ ] `DerivePhenotypicChanges(NeuralNetwork&)`
-  - [ ] Перенесите алгоритмы эволюции, мутаций, кроссовера, расчёта фитнеса.
+        - [x] `DerivePhenotypicChanges(NeuralNetwork&)`
+  - [x] Перенесите алгоритмы эволюции, мутаций, кроссовера, расчёта фитнеса.
+    - [x] `Mutate_AddNeuron`, `Mutate_AddLink`, `Mutate_RemoveLink`, `Mutate_RemoveSimpleNeuron`
+    - [x] `Mutate_LinkWeights`, `Randomize_LinkWeights`
+    - [x] `Mutate_NeuronActivations_A/B`, `Mutate_NeuronActivation_Type`
+    - [x] `Mutate_NeuronTimeConstants`, `Mutate_NeuronBiases`
+    - [x] `Mutate_NeuronTraits`, `Mutate_LinkTraits`, `Mutate_GenomeTraits`
+    - [x] `Randomize_Traits`
   - [ ] Реализуйте вспомогательные функции (генераторы случайных чисел, сериализацию).
 
 - [ ] Покрытие тестами

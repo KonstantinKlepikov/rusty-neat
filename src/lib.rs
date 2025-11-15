@@ -3,6 +3,7 @@ pub mod genes;
 pub mod hyperneat;
 pub mod network;
 pub mod parameters;
+pub mod innovation;
 pub mod population;
 pub mod random;
 pub mod serialization;

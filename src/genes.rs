@@ -2,6 +2,25 @@
 use std::collections::HashMap as StdHashMap;
 use rand::prelude::*;
 
+/// Trait parameter details mirroring C++ TraitParameters (simplified)
+#[derive(Debug, Clone)]
+pub enum TraitDetail {
+    Int { min: i64, max: i64, mut_power: i64, mut_replace_prob: f64 },
+    Float { min: f64, max: f64, mut_power: f64, mut_replace_prob: f64 },
+    Str { set: Vec<String>, probs: Vec<f64> },
+    IntSet { set: Vec<i64>, probs: Vec<f64> },
+    FloatSet { set: Vec<f64>, probs: Vec<f64> },
+}
+
+#[derive(Debug, Clone)]
+pub struct TraitParameters {
+    pub importance_coeff: f64,
+    pub mutation_prob: f64,
+    pub detail: TraitDetail,
+    pub dep_key: Option<String>,
+    pub dep_values: Vec<TraitValue>,
+}
+
 /// Trait value container (simplified)
 #[derive(Debug, Clone, PartialEq)]
 pub enum TraitValue {
@@ -133,28 +152,31 @@ impl Gene {
     }
 
     /// Mutate traits according to a per-trait probability map.
-    /// `mutation_probs` maps trait name -> probability in [0,1].
+    /// Mutate traits according to a map of `TraitParameters` (matches C++ behavior).
     /// Returns true if any trait mutated.
-    pub fn mutate_traits(&mut self, mutation_probs: &StdHashMap<String, f64>, rng: &mut impl Rng) -> bool {
+    pub fn mutate_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) -> bool {
+        // delegate to helper that operates on a trait map
+        mutate_trait_map(&mut self.traits, tp, rng)
+    }
+
+    /// Mutate traits using a simple name->probability map (fallback API used by Genome)
+    pub fn mutate_traits_map(&mut self, mutation_probs: &StdHashMap<String, f64>, rng: &mut impl Rng) -> bool {
         let mut did_mutate = false;
         for (name, prob) in mutation_probs {
-                    if rng.random::<f64>() < *prob {
+            if rng.random::<f64>() < *prob {
                 if let Some(tv) = self.traits.get_mut(name) {
                     match tv {
                         TraitValue::Int(v) => {
-                            // small integer perturbation
-                            let delta = (rng.random_range(-2i64..=2i64)) as i64;
+                            let delta = rng.random_range(-2i64..=2i64);
                             *v = *v + delta;
                             did_mutate = true;
                         }
                         TraitValue::Float(v) => {
-                            // Gaussian-like perturbation
                             let delta = (rng.random::<f64>() - 0.5) * 0.2 * ((*v).abs().max(1.0));
                             *v = *v + delta;
                             did_mutate = true;
                         }
                         TraitValue::Str(s) => {
-                            // no sensible mutation defined for strings; flip to empty
                             *s = String::new();
                             did_mutate = true;
                         }
@@ -163,13 +185,15 @@ impl Gene {
                             did_mutate = true;
                         }
                     }
-                } else {
-                    // trait not present but mutation probability set — ignore
                 }
             }
         }
-
         did_mutate
+    }
+
+    /// Initialize traits according to `TraitParameters` (mirrors C++ InitTraits)
+    pub fn init_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) {
+        init_trait_map(&mut self.traits, tp, rng);
     }
 
     /// Compute simple trait distances between this gene and `other`.
@@ -323,6 +347,56 @@ impl NeuronGene {
     pub fn set_trait_float(&mut self, name: &str, value: f64) {
         self.traits.insert(name.to_string(), TraitValue::Float(value));
     }
+
+    /// Mutate traits stored on this neuron using the provided probability map.
+    pub fn mutate_traits_map(&mut self, mutation_probs: &StdHashMap<String, f64>, rng: &mut impl Rng) -> bool {
+        let mut did_mutate = false;
+        for (name, prob) in mutation_probs {
+            if rng.random::<f64>() < *prob {
+                if let Some(tv) = self.traits.get_mut(name) {
+                    match tv {
+                        TraitValue::Int(v) => {
+                            let delta = rng.random_range(-2i64..=2i64);
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Float(v) => {
+                            let delta = (rng.random::<f64>() - 0.5) * 0.2 * ((*v).abs().max(1.0));
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Str(s) => {
+                            *s = String::new();
+                            did_mutate = true;
+                        }
+                        TraitValue::Bool(b) => {
+                            *b = !*b;
+                            did_mutate = true;
+                        }
+                    }
+                }
+            }
+        }
+        did_mutate
+    }
+
+    /// Randomize traits for this neuron (simple heuristics per type).
+    pub fn randomize_traits_map(&mut self, rng: &mut impl Rng) {
+        // Fallback simple randomization (used when no TraitParameters are present)
+        for (_k, v) in self.traits.iter_mut() {
+            match v {
+                TraitValue::Int(iv) => { *iv = rng.random_range(-5i64..=5i64); }
+                TraitValue::Float(fv) => { *fv = rng.random_range(-1.0..1.0); }
+                TraitValue::Str(s) => { *s = String::new(); }
+                TraitValue::Bool(b) => { *b = rng.random::<bool>(); }
+            }
+        }
+    }
+
+    /// Mutate traits using full `TraitParameters` map (C++-like semantics)
+    pub fn mutate_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) -> bool {
+        mutate_trait_map(&mut self.traits, tp, rng)
+    }
 }
 
 impl Default for NeuronGene {
@@ -414,10 +488,212 @@ impl LinkGene {
     pub fn set_trait_float(&mut self, name: &str, value: f64) {
         self.traits.insert(name.to_string(), TraitValue::Float(value));
     }
+
+    /// Mutate traits on this link using the provided probability map.
+    pub fn mutate_traits_map(&mut self, mutation_probs: &StdHashMap<String, f64>, rng: &mut impl Rng) -> bool {
+        let mut did_mutate = false;
+        for (name, prob) in mutation_probs {
+            if rng.random::<f64>() < *prob {
+                if let Some(tv) = self.traits.get_mut(name) {
+                    match tv {
+                        TraitValue::Int(v) => {
+                            let delta = rng.random_range(-2i64..=2i64);
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Float(v) => {
+                            let delta = (rng.random::<f64>() - 0.5) * 0.2 * ((*v).abs().max(1.0));
+                            *v = *v + delta;
+                            did_mutate = true;
+                        }
+                        TraitValue::Str(s) => {
+                            *s = String::new();
+                            did_mutate = true;
+                        }
+                        TraitValue::Bool(b) => {
+                            *b = !*b;
+                            did_mutate = true;
+                        }
+                    }
+                }
+            }
+        }
+        did_mutate
+    }
+
+    /// Mutate traits using full `TraitParameters` map (C++-like semantics)
+    pub fn mutate_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) -> bool {
+        // delegate to generic helper operating on trait HashMap
+        mutate_trait_map(&mut self.traits, tp, rng)
+    }
+
+    /// Randomize traits on this link.
+    pub fn randomize_traits_map(&mut self, rng: &mut impl Rng) {
+        for (_k, v) in self.traits.iter_mut() {
+            match v {
+                TraitValue::Int(iv) => { *iv = rng.random_range(-5i64..=5i64); }
+                TraitValue::Float(fv) => { *fv = rng.random_range(-1.0..1.0); }
+                TraitValue::Str(s) => { *s = String::new(); }
+                TraitValue::Bool(b) => { *b = rng.random::<bool>(); }
+            }
+        }
+    }
 }
 
 impl Default for LinkGene {
     fn default() -> Self {
         LinkGene::empty()
     }
+}
+
+// ----------------------
+// Helper functions: init/mutate trait maps using TraitParameters (C++-like)
+// ----------------------
+fn roulette_index(probs: &Vec<f64>, rng: &mut impl Rng) -> usize {
+    let total: f64 = probs.iter().sum();
+    if total <= 0.0 { return 0; }
+    let mut pick = rng.random::<f64>() * total;
+    let mut idx = 0usize;
+    for p in probs {
+        if pick <= *p { break; }
+        pick -= *p;
+        idx += 1;
+    }
+    if idx >= probs.len() { probs.len() - 1 } else { idx }
+}
+
+fn init_trait_map(map: &mut StdHashMap<String, TraitValue>, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) {
+    for (name, params) in tp.iter() {
+        match &params.detail {
+            TraitDetail::Int { min, max, .. } => {
+                let v = rng.random_range(*min..=*max);
+                map.insert(name.clone(), TraitValue::Int(v));
+            }
+            TraitDetail::Float { min, max, .. } => {
+                let x = rng.random::<f64>();
+                // scale to [min,max]
+                let val = x * (max - min) + min;
+                map.insert(name.clone(), TraitValue::Float(val));
+            }
+            TraitDetail::Str { set, probs } => {
+                if set.is_empty() { continue; }
+                let idx = roulette_index(probs, rng);
+                map.insert(name.clone(), TraitValue::Str(set[idx].clone()));
+            }
+            TraitDetail::IntSet { set, probs } => {
+                if set.is_empty() { continue; }
+                let idx = roulette_index(probs, rng);
+                map.insert(name.clone(), TraitValue::Int(set[idx]));
+            }
+            TraitDetail::FloatSet { set, probs } => {
+                if set.is_empty() { continue; }
+                let idx = roulette_index(probs, rng);
+                map.insert(name.clone(), TraitValue::Float(set[idx]));
+            }
+        }
+    }
+}
+
+fn mutate_trait_map(map: &mut StdHashMap<String, TraitValue>, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) -> bool {
+    let mut did_mutate = false;
+
+    for (name, params) in tp.iter() {
+        // dependency check
+        let mut doit = true;
+        if let Some(dep_key) = &params.dep_key {
+            if let Some(dep_val) = map.get(dep_key) {
+                // require dep_values contains dep_val
+                let mut ok = false;
+                for dv in &params.dep_values {
+                    if dv == dep_val { ok = true; break; }
+                }
+                doit = ok;
+            } else { doit = false; }
+        }
+
+        if !doit { continue; }
+
+        if rng.random::<f64>() < params.mutation_prob {
+            match &params.detail {
+                TraitDetail::Int { min, max, mut_power, mut_replace_prob } => {
+                    if let Some(TraitValue::Int(cur)) = map.get(name).cloned() {
+                        if rng.random::<f64>() < *mut_replace_prob {
+                            // replace until different
+                            let mut val = cur;
+                            while val == cur {
+                                val = rng.random_range(*min..=*max);
+                            }
+                            map.insert(name.clone(), TraitValue::Int(val));
+                            did_mutate = true;
+                        } else {
+                            let mut val = cur;
+                            while val == cur {
+                                let delta = rng.random_range(-(*mut_power)..=*mut_power);
+                                val = (val + delta).clamp(*min, *max);
+                            }
+                            map.insert(name.clone(), TraitValue::Int(val));
+                            did_mutate = true;
+                        }
+                    }
+                }
+                TraitDetail::Float { min, max, mut_power, mut_replace_prob } => {
+                    if let Some(TraitValue::Float(cur)) = map.get(name).cloned() {
+                        if rng.random::<f64>() < *mut_replace_prob {
+                            let mut val = cur;
+                            while (val - cur).abs() < std::f64::EPSILON {
+                                let x = rng.random::<f64>();
+                                val = x * (max - min) + min;
+                            }
+                            map.insert(name.clone(), TraitValue::Float(val));
+                            did_mutate = true;
+                        } else {
+                            let mut val = cur;
+                            while (val - cur).abs() < std::f64::EPSILON {
+                                val += (rng.random::<f64>() * 2.0 - 1.0) * (*mut_power);
+                                if val < *min { val = *min; }
+                                if val > *max { val = *max; }
+                            }
+                            map.insert(name.clone(), TraitValue::Float(val));
+                            did_mutate = true;
+                        }
+                    }
+                }
+                TraitDetail::Str { set, probs } => {
+                    if let Some(TraitValue::Str(cur)) = map.get(name).cloned() {
+                        if set.is_empty() { continue; }
+                        let mut idx = roulette_index(probs, rng);
+                        while set[idx] == cur {
+                            idx = roulette_index(probs, rng);
+                        }
+                        map.insert(name.clone(), TraitValue::Str(set[idx].clone()));
+                        did_mutate = true;
+                    }
+                }
+                TraitDetail::IntSet { set, probs } => {
+                    if let Some(TraitValue::Int(cur)) = map.get(name).cloned() {
+                        if set.is_empty() { continue; }
+                        let mut idx = roulette_index(probs, rng);
+                        while set[idx] == cur as i64 {
+                            idx = roulette_index(probs, rng);
+                        }
+                        map.insert(name.clone(), TraitValue::Int(set[idx]));
+                        did_mutate = true;
+                    }
+                }
+                TraitDetail::FloatSet { set, probs } => {
+                    if let Some(TraitValue::Float(cur)) = map.get(name).cloned() {
+                        if set.is_empty() { continue; }
+                        let mut idx = roulette_index(probs, rng);
+                        while (set[idx] - cur).abs() < std::f64::EPSILON {
+                            idx = roulette_index(probs, rng);
+                        }
+                        map.insert(name.clone(), TraitValue::Float(set[idx]));
+                        did_mutate = true;
+                    }
+                }
+            }
+        }
+    }
+
+    did_mutate
 }
