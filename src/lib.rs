@@ -1,9 +1,9 @@
-pub mod genome;
 pub mod genes;
+pub mod genome;
 pub mod hyperneat;
+pub mod innovation;
 pub mod network;
 pub mod parameters;
-pub mod innovation;
 pub mod population;
 pub mod random;
 pub mod serialization;

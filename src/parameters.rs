@@ -1,5 +1,5 @@
-use std::collections::HashMap as StdHashMap;
 use crate::genes::TraitParameters;
+use std::collections::HashMap as StdHashMap;
 
 /// Simplified Parameters struct capturing only fields needed for mutations.
 #[derive(Debug, Clone)]
@@ -70,11 +70,12 @@ impl Default for Parameters {
             bias_mutation_max_power: 0.1,
             min_neuron_bias: -5.0,
             max_neuron_bias: 5.0,
-            activation_function_probs: vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            activation_function_probs: vec![
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
             neuron_trait_parameters: StdHashMap::new(),
             link_trait_parameters: StdHashMap::new(),
             genome_trait_parameters: StdHashMap::new(),
         }
     }
 }
-

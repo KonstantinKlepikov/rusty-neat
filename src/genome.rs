@@ -1,17 +1,15 @@
 //! Genome and gene module (neurons, links)
 
 // === Imports analogous to C++ standard and Boost libraries ===
-use std::fs::File;
-use std::io::{Read, BufReader, Result as IoResult};
-use std::cmp::{PartialEq, PartialOrd, Ordering};
-use crate::network::{NeuralNetwork, Neuron as PhNeuron, Connection as PhConnection};
+use crate::genes::{ActivationFunction, LinkGene, NeuronGene, TraitValue};
 use crate::hyperneat::Substrate;
-use crate::genes::{TraitValue, NeuronGene, LinkGene, ActivationFunction};
-use rand::Rng;
 use crate::innovation::InnovationDatabase;
+use crate::network::{Connection as PhConnection, NeuralNetwork, Neuron as PhNeuron};
 use crate::parameters::Parameters;
-
-
+use rand::Rng;
+use std::cmp::{Ordering, PartialEq, PartialOrd};
+use std::fs::File;
+use std::io::{BufReader, Read, Result as IoResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
@@ -42,7 +40,6 @@ pub struct PhenotypeBehavior;
 /// Central NEAT genome structure (analog of C++ class Genome)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Genome {
-
     /// Genome ID
     pub id: u64,
     /// Number of input neurons
@@ -115,18 +112,31 @@ impl Genome {
 impl Genome {
     /// Count links inputting from a given neuron ID
     pub fn links_inputting_from(&self, id: u64) -> usize {
-        self.link_genes.iter().filter(|l| l.from_neuron_id == id).count()
+        self.link_genes
+            .iter()
+            .filter(|l| l.from_neuron_id == id)
+            .count()
     }
 
     /// Count links outputting to a given neuron ID
     pub fn links_outputting_to(&self, id: u64) -> usize {
-        self.link_genes.iter().filter(|l| l.to_neuron_id == id).count()
+        self.link_genes
+            .iter()
+            .filter(|l| l.to_neuron_id == id)
+            .count()
     }
 
     /// Mutate: add a neuron by splitting an existing link.
     /// Uses shared `InnovationDatabase` to allocate innovation and neuron ids and `Parameters` for rules.
-    pub fn mutate_add_neuron(&mut self, innov_db: &mut InnovationDatabase, params: &Parameters, rng: &mut impl Rng) -> bool {
-        if self.link_genes.is_empty() { return false; }
+    pub fn mutate_add_neuron(
+        &mut self,
+        innov_db: &mut InnovationDatabase,
+        params: &Parameters,
+        rng: &mut impl Rng,
+    ) -> bool {
+        if self.link_genes.is_empty() {
+            return false;
+        }
 
         // try to find a valid link to split
         let mut tries = 256usize;
@@ -143,7 +153,8 @@ impl Genome {
             if !params.dont_use_bias_neuron {
                 // if from neuron is bias (assume last input is bias)
                 if let Some(from_idx) = self.get_neuron_index(lg.from_neuron_id) {
-                    if from_idx + 1 == self.num_inputs { // bias is last input index
+                    if from_idx + 1 == self.num_inputs {
+                        // bias is last input index
                         tries -= 1;
                         continue;
                     }
@@ -154,7 +165,10 @@ impl Genome {
             break;
         }
 
-        let idx = match chosen_idx { Some(i) => i, None => return false };
+        let idx = match chosen_idx {
+            Some(i) => i,
+            None => return false,
+        };
         let chosen = self.link_genes[idx].clone();
 
         // remove the chosen link
@@ -170,13 +184,28 @@ impl Genome {
         };
 
         // compute split_y
-        let split_y = if let (Some(fi), Some(ti)) = (self.get_neuron_index(from), self.get_neuron_index(to)) {
+        let split_y = if let (Some(fi), Some(ti)) =
+            (self.get_neuron_index(from), self.get_neuron_index(to))
+        {
             (self.neuron_genes[fi].split_y + self.neuron_genes[ti].split_y) / 2.0
-        } else { 0.5 };
+        } else {
+            0.5
+        };
 
         // add neuron gene if not present
         if self.get_neuron_index(nid).is_none() {
-            let new_ng = NeuronGene::new(nid, crate::genes::NeuronType::Hidden, 0, 0, split_y, 1.0, 0.0, 1.0, 0.0, ActivationFunction::SignedSigmoid);
+            let new_ng = NeuronGene::new(
+                nid,
+                crate::genes::NeuronType::Hidden,
+                0,
+                0,
+                split_y,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                ActivationFunction::SignedSigmoid,
+            );
             self.neuron_genes.push(new_ng);
         }
 
@@ -195,23 +224,38 @@ impl Genome {
 
     /// Mutate: add a link between two existing neurons.
     /// Simplified: pick random pair (from != to) that doesn't already exist.
-    pub fn mutate_add_link(&mut self, innov_db: &mut InnovationDatabase, params: &Parameters, rng: &mut impl Rng) -> bool {
-        if self.neuron_genes.len() < 2 { return false; }
+    pub fn mutate_add_link(
+        &mut self,
+        innov_db: &mut InnovationDatabase,
+        params: &Parameters,
+        rng: &mut impl Rng,
+    ) -> bool {
+        if self.neuron_genes.len() < 2 {
+            return false;
+        }
         let n = self.neuron_genes.len();
         // try some attempts
         for _ in 0..32 {
             let i = rng.random_range(0..n);
             let j = rng.random_range(0..n);
-            if i == j { continue; }
+            if i == j {
+                continue;
+            }
             let from = self.neuron_genes[i].id;
             let to = self.neuron_genes[j].id;
             // skip if link exists
-            if self.link_genes.iter().any(|l| l.from_neuron_id == from && l.to_neuron_id == to) {
+            if self
+                .link_genes
+                .iter()
+                .any(|l| l.from_neuron_id == from && l.to_neuron_id == to)
+            {
                 continue;
             }
             // create new innovation id
             // create or reuse innovation id
-            let innov = innov_db.check_link_innovation(from, to).unwrap_or_else(|| innov_db.add_link_innovation(from, to));
+            let innov = innov_db
+                .check_link_innovation(from, to)
+                .unwrap_or_else(|| innov_db.add_link_innovation(from, to));
             // random weight in range
             let w: f64 = rng.random_range(params.min_weight..params.max_weight);
             // decide recurrence
@@ -232,14 +276,21 @@ impl Genome {
 
     /// Mutate: remove a random link (if more than one exists)
     pub fn mutate_remove_link(&mut self, _params: &Parameters, rng: &mut impl Rng) -> bool {
-    if self.link_genes.len() < 2 { return false; }
-    let idx = rng.random_range(0..self.link_genes.len());
+        if self.link_genes.len() < 2 {
+            return false;
+        }
+        let idx = rng.random_range(0..self.link_genes.len());
         self.link_genes.remove(idx);
         true
     }
 
     /// Mutate: remove a simple hidden neuron (one input, one output) and replace with a direct link.
-    pub fn mutate_remove_simple_neuron(&mut self, innov_db: &mut InnovationDatabase, _params: &Parameters, rng: &mut impl Rng) -> bool {
+    pub fn mutate_remove_simple_neuron(
+        &mut self,
+        innov_db: &mut InnovationDatabase,
+        _params: &Parameters,
+        rng: &mut impl Rng,
+    ) -> bool {
         // find candidate hidden neurons
         let mut candidates: Vec<usize> = Vec::new();
         for (i, ng) in self.neuron_genes.iter().enumerate() {
@@ -252,36 +303,49 @@ impl Genome {
             }
         }
 
-    if candidates.is_empty() { return false; }
-    let choice = candidates[rng.random_range(0..candidates.len())];
+        if candidates.is_empty() {
+            return false;
+        }
+        let choice = candidates[rng.random_range(0..candidates.len())];
         let nid = self.neuron_genes[choice].id;
 
         // find the single incoming and outgoing links
         let mut in_idx: Option<usize> = None;
         let mut out_idx: Option<usize> = None;
         for (i, lg) in self.link_genes.iter().enumerate() {
-            if lg.to_neuron_id == nid { in_idx = Some(i); }
-            if lg.from_neuron_id == nid { out_idx = Some(i); }
+            if lg.to_neuron_id == nid {
+                in_idx = Some(i);
+            }
+            if lg.from_neuron_id == nid {
+                out_idx = Some(i);
+            }
         }
 
-    if in_idx.is_none() || out_idx.is_none() { return false; }
+        if in_idx.is_none() || out_idx.is_none() {
+            return false;
+        }
         let in_l = self.link_genes[in_idx.unwrap()].clone();
         let out_l = self.link_genes[out_idx.unwrap()].clone();
 
         // if link from->to already exists, just remove neuron and links
         let from = in_l.from_neuron_id;
         let to = out_l.to_neuron_id;
-        let exists = self.link_genes.iter().any(|l| l.from_neuron_id == from && l.to_neuron_id == to);
-
+        let exists = self
+            .link_genes
+            .iter()
+            .any(|l| l.from_neuron_id == from && l.to_neuron_id == to);
 
         // remove links connected to nid (filter)
-        self.link_genes.retain(|l| l.from_neuron_id != nid && l.to_neuron_id != nid);
+        self.link_genes
+            .retain(|l| l.from_neuron_id != nid && l.to_neuron_id != nid);
 
         // remove neuron
         self.neuron_genes.retain(|n| n.id != nid);
 
         if !exists {
-            let innov = innov_db.check_link_innovation(from, to).unwrap_or_else(|| innov_db.add_link_innovation(from, to));
+            let innov = innov_db
+                .check_link_innovation(from, to)
+                .unwrap_or_else(|| innov_db.add_link_innovation(from, to));
             let lg = LinkGene::new(from, to, innov, in_l.weight, false);
             self.link_genes.push(lg);
         }
@@ -296,7 +360,9 @@ impl Genome {
         if self.link_genes.len() > self.initial_num_links {
             t_genometail = ((self.link_genes.len() as f64) * 0.8) as usize;
         }
-        if t_genometail < self.initial_num_links { t_genometail = self.initial_num_links; }
+        if t_genometail < self.initial_num_links {
+            t_genometail = self.initial_num_links;
+        }
 
         let mut did_mutate = false;
         let t_severe_mutation = rng.random::<f64>() < params.mutate_weights_severe_prob;
@@ -318,15 +384,23 @@ impl Genome {
                 }
 
                 // clamp
-                if w < params.min_weight { w = params.min_weight; }
-                if w > params.max_weight { w = params.max_weight; }
+                if w < params.min_weight {
+                    w = params.min_weight;
+                }
+                if w > params.max_weight {
+                    w = params.max_weight;
+                }
                 lg.set_weight(w);
                 did_mutate = true;
             } else if t_severe_mutation {
                 if rng.random::<f64>() < params.weight_mutation_rate {
                     let mut w = rng.random_range(params.min_weight..params.max_weight);
-                    if w < params.min_weight { w = params.min_weight; }
-                    if w > params.max_weight { w = params.max_weight; }
+                    if w < params.min_weight {
+                        w = params.min_weight;
+                    }
+                    if w > params.max_weight {
+                        w = params.max_weight;
+                    }
                     lg.set_weight(w);
                     did_mutate = true;
                 }
@@ -343,7 +417,6 @@ impl Genome {
             lg.set_weight(w);
         }
     }
-
 }
 
 /// Pick a random ActivationFunction according to probabilities in Parameters
@@ -380,7 +453,11 @@ fn get_random_activation(params: &Parameters, rng: &mut impl Rng) -> ActivationF
         ActivationFunction::Relu,
         ActivationFunction::Softplus,
     ];
-    let i = if idx >= variants.len() { variants.len() - 1 } else { idx };
+    let i = if idx >= variants.len() {
+        variants.len() - 1
+    } else {
+        idx
+    };
     variants[i]
 }
 
@@ -388,11 +465,18 @@ impl Genome {
     /// Perturbs the A parameters of the neuron activation functions
     pub fn mutate_neuron_activations_a(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         for ng in self.neuron_genes.iter_mut() {
-            if ng.neuron_type != crate::genes::NeuronType::Input && ng.neuron_type != crate::genes::NeuronType::Bias {
-                let delta = (rng.random::<f64>() * 2.0 - 1.0) * params.activation_a_mutation_max_power;
+            if ng.neuron_type != crate::genes::NeuronType::Input
+                && ng.neuron_type != crate::genes::NeuronType::Bias
+            {
+                let delta =
+                    (rng.random::<f64>() * 2.0 - 1.0) * params.activation_a_mutation_max_power;
                 ng.a += delta;
-                if ng.a < params.min_activation_a { ng.a = params.min_activation_a; }
-                if ng.a > params.max_activation_a { ng.a = params.max_activation_a; }
+                if ng.a < params.min_activation_a {
+                    ng.a = params.min_activation_a;
+                }
+                if ng.a > params.max_activation_a {
+                    ng.a = params.max_activation_a;
+                }
             }
         }
         true
@@ -401,19 +485,32 @@ impl Genome {
     /// Perturbs the B parameters of the neuron activation functions
     pub fn mutate_neuron_activations_b(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         for ng in self.neuron_genes.iter_mut() {
-            if ng.neuron_type != crate::genes::NeuronType::Input && ng.neuron_type != crate::genes::NeuronType::Bias {
-                let delta = (rng.random::<f64>() * 2.0 - 1.0) * params.activation_b_mutation_max_power;
+            if ng.neuron_type != crate::genes::NeuronType::Input
+                && ng.neuron_type != crate::genes::NeuronType::Bias
+            {
+                let delta =
+                    (rng.random::<f64>() * 2.0 - 1.0) * params.activation_b_mutation_max_power;
                 ng.b += delta;
-                if ng.b < params.min_activation_b { ng.b = params.min_activation_b; }
-                if ng.b > params.max_activation_b { ng.b = params.max_activation_b; }
+                if ng.b < params.min_activation_b {
+                    ng.b = params.min_activation_b;
+                }
+                if ng.b > params.max_activation_b {
+                    ng.b = params.max_activation_b;
+                }
             }
         }
         true
     }
 
     /// Changes the activation function type for a random neuron
-    pub fn mutate_neuron_activation_type(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
-        if self.neuron_genes.len() <= self.num_inputs { return false; }
+    pub fn mutate_neuron_activation_type(
+        &mut self,
+        params: &Parameters,
+        rng: &mut impl Rng,
+    ) -> bool {
+        if self.neuron_genes.len() <= self.num_inputs {
+            return false;
+        }
         let start = self.num_inputs;
         let end = self.neuron_genes.len();
         let idx = rng.random_range(start..end);
@@ -426,11 +523,18 @@ impl Genome {
     /// Perturbs the neuron time constants
     pub fn mutate_neuron_timeconstants(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         for ng in self.neuron_genes.iter_mut() {
-            if ng.neuron_type != crate::genes::NeuronType::Input && ng.neuron_type != crate::genes::NeuronType::Bias {
-                let delta = (rng.random::<f64>() * 2.0 - 1.0) * params.timeconstant_mutation_max_power;
+            if ng.neuron_type != crate::genes::NeuronType::Input
+                && ng.neuron_type != crate::genes::NeuronType::Bias
+            {
+                let delta =
+                    (rng.random::<f64>() * 2.0 - 1.0) * params.timeconstant_mutation_max_power;
                 ng.timeconstant += delta;
-                if ng.timeconstant < params.min_neuron_time_constant { ng.timeconstant = params.min_neuron_time_constant; }
-                if ng.timeconstant > params.max_neuron_time_constant { ng.timeconstant = params.max_neuron_time_constant; }
+                if ng.timeconstant < params.min_neuron_time_constant {
+                    ng.timeconstant = params.min_neuron_time_constant;
+                }
+                if ng.timeconstant > params.max_neuron_time_constant {
+                    ng.timeconstant = params.max_neuron_time_constant;
+                }
             }
         }
         true
@@ -439,11 +543,17 @@ impl Genome {
     /// Perturbs the neuron biases
     pub fn mutate_neuron_biases(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         for ng in self.neuron_genes.iter_mut() {
-            if ng.neuron_type != crate::genes::NeuronType::Input && ng.neuron_type != crate::genes::NeuronType::Bias {
+            if ng.neuron_type != crate::genes::NeuronType::Input
+                && ng.neuron_type != crate::genes::NeuronType::Bias
+            {
                 let delta = (rng.random::<f64>() * 2.0 - 1.0) * params.bias_mutation_max_power;
                 ng.bias += delta;
-                if ng.bias < params.min_neuron_bias { ng.bias = params.min_neuron_bias; }
-                if ng.bias > params.max_neuron_bias { ng.bias = params.max_neuron_bias; }
+                if ng.bias < params.min_neuron_bias {
+                    ng.bias = params.min_neuron_bias;
+                }
+                if ng.bias > params.max_neuron_bias {
+                    ng.bias = params.max_neuron_bias;
+                }
             }
         }
         true
@@ -453,7 +563,9 @@ impl Genome {
     pub fn mutate_neuron_traits(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         let mut did = false;
         for ng in self.neuron_genes.iter_mut() {
-            if ng.mutate_traits(&params.neuron_trait_parameters, rng) { did = true; }
+            if ng.mutate_traits(&params.neuron_trait_parameters, rng) {
+                did = true;
+            }
         }
         did
     }
@@ -462,7 +574,9 @@ impl Genome {
     pub fn mutate_link_traits(&mut self, params: &Parameters, rng: &mut impl Rng) -> bool {
         let mut did = false;
         for lg in self.link_genes.iter_mut() {
-            if lg.mutate_traits(&params.link_trait_parameters, rng) { did = true; }
+            if lg.mutate_traits(&params.link_trait_parameters, rng) {
+                did = true;
+            }
         }
         did
     }
@@ -487,10 +601,18 @@ impl Genome {
             // implement a simple randomization for Gene's trait map
             for (_k, v) in g.traits.iter_mut() {
                 match v {
-                    TraitValue::Int(iv) => { *iv = rng.random_range(-5i64..=5i64); }
-                    TraitValue::Float(fv) => { *fv = rng.random_range(-1.0..1.0); }
-                    TraitValue::Str(s) => { *s = String::new(); }
-                    TraitValue::Bool(b) => { *b = rng.random::<bool>(); }
+                    TraitValue::Int(iv) => {
+                        *iv = rng.random_range(-5i64..=5i64);
+                    }
+                    TraitValue::Float(fv) => {
+                        *fv = rng.random_range(-1.0..1.0);
+                    }
+                    TraitValue::Str(s) => {
+                        *s = String::new();
+                    }
+                    TraitValue::Bool(b) => {
+                        *b = rng.random::<bool>();
+                    }
                 }
             }
         }
@@ -566,7 +688,9 @@ impl Genome {
 
     /// Get link index by innovation ID
     pub fn get_link_index(&self, innov_id: u64) -> Option<usize> {
-        self.link_genes.iter().position(|l| l.innovation_id == innov_id)
+        self.link_genes
+            .iter()
+            .position(|l| l.innovation_id == innov_id)
     }
 
     /// Number of neurons
@@ -591,20 +715,29 @@ impl Genome {
 
     /// Set neuron X and Y coordinates (integers, as in C++ original)
     pub fn set_neuron_xy(&mut self, idx: usize, x: i32, y: i32) {
-        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_xy");
+        assert!(
+            idx < self.neuron_genes.len(),
+            "Index out of bounds in set_neuron_xy"
+        );
         self.neuron_genes[idx].x = x;
         self.neuron_genes[idx].y = y;
     }
 
     /// Set neuron X coordinate
     pub fn set_neuron_x(&mut self, idx: usize, x: i32) {
-        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_x");
+        assert!(
+            idx < self.neuron_genes.len(),
+            "Index out of bounds in set_neuron_x"
+        );
         self.neuron_genes[idx].x = x;
     }
 
     /// Set neuron Y coordinate
     pub fn set_neuron_y(&mut self, idx: usize, y: i32) {
-        assert!(idx < self.neuron_genes.len(), "Index out of bounds in set_neuron_y");
+        assert!(
+            idx < self.neuron_genes.len(),
+            "Index out of bounds in set_neuron_y"
+        );
         self.neuron_genes[idx].y = y;
     }
 
@@ -711,7 +844,10 @@ impl Genome {
         // Fill the net with the connections
         for lg in &self.link_genes {
             // find source/target neuron indices in the phenotype (by neuron id)
-            if let (Some(src_idx), Some(dst_idx)) = (self.get_neuron_index(lg.from_neuron_id), self.get_neuron_index(lg.to_neuron_id)) {
+            if let (Some(src_idx), Some(dst_idx)) = (
+                self.get_neuron_index(lg.from_neuron_id),
+                self.get_neuron_index(lg.to_neuron_id),
+            ) {
                 // extract hebbian params from traits if present
                 let mut hebb_rate = 0.3_f64;
                 let mut hebb_pre_rate = 0.1_f64;
@@ -733,8 +869,7 @@ impl Genome {
                 };
 
                 net.add_connection(c);
-            }
-            else {
+            } else {
                 // neuron id not found in phenotype; skip this connection
             }
         }
@@ -748,15 +883,27 @@ impl Genome {
     /// This is a pragmatic port of the C++ Genome::BuildHyperNEATPhenotype implementation.
     pub fn build_hyperneat_phenotype(&self, net: &mut NeuralNetwork, subst: &Substrate) {
         // minimal validations
-        assert!(!subst.input_coords.is_empty(), "substrate must have input coords");
-        assert!(!subst.output_coords.is_empty(), "substrate must have output coords");
+        assert!(
+            !subst.input_coords.is_empty(),
+            "substrate must have input coords"
+        );
+        assert!(
+            !subst.output_coords.is_empty(),
+            "substrate must have output coords"
+        );
 
         let max_dims = subst.get_max_dims();
 
         // ensure CPPN I/O sizes are compatible
         assert!(subst.get_min_cppn_inputs() > 0);
-        assert!(self.num_inputs >= subst.get_min_cppn_inputs(), "genome (CPPN) does not have enough inputs");
-        assert!(self.num_outputs >= subst.get_min_cppn_outputs(), "genome (CPPN) does not have enough outputs");
+        assert!(
+            self.num_inputs >= subst.get_min_cppn_inputs(),
+            "genome (CPPN) does not have enough inputs"
+        );
+        assert!(
+            self.num_outputs >= subst.get_min_cppn_outputs(),
+            "genome (CPPN) does not have enough outputs"
+        );
 
         // create target substrate network
         net.clear();
@@ -854,7 +1001,9 @@ impl Genome {
                 let mut t_inputs = vec![0.0_f64; self.num_inputs];
                 let sc = &net.neurons[i].substrate_coords;
                 for n in 0..sc.len() {
-                    if n < t_inputs.len() { t_inputs[n] = sc[n]; }
+                    if n < t_inputs.len() {
+                        t_inputs[n] = sc[n];
+                    }
                 }
 
                 if subst.with_distance {
@@ -865,23 +1014,39 @@ impl Genome {
                         sum += v * v;
                     }
                     sum = sum.sqrt();
-                    if self.num_inputs >= 2 { t_inputs[self.num_inputs - 2] = sum; }
+                    if self.num_inputs >= 2 {
+                        t_inputs[self.num_inputs - 2] = sum;
+                    }
                 }
-                if self.num_inputs > 0 { t_inputs[self.num_inputs - 1] = 1.0; }
+                if self.num_inputs > 0 {
+                    t_inputs[self.num_inputs - 1] = 1.0;
+                }
 
                 t_temp_phenotype.input(t_inputs);
-                for _ in 0..dp { t_temp_phenotype.activate(); }
+                for _ in 0..dp {
+                    t_temp_phenotype.activate();
+                }
 
                 let out = t_temp_phenotype.output();
                 if out.len() >= 2 {
                     let mut t_tc = out[self.num_outputs.saturating_sub(2)];
                     let mut t_bias = out[self.num_outputs.saturating_sub(1)];
                     // clamp
-                    if t_tc < -1.0 { t_tc = -1.0; } else if t_tc > 1.0 { t_tc = 1.0; }
-                    if t_bias < -1.0 { t_bias = -1.0; } else if t_bias > 1.0 { t_bias = 1.0; }
+                    if t_tc < -1.0 {
+                        t_tc = -1.0;
+                    } else if t_tc > 1.0 {
+                        t_tc = 1.0;
+                    }
+                    if t_bias < -1.0 {
+                        t_bias = -1.0;
+                    } else if t_bias > 1.0 {
+                        t_bias = 1.0;
+                    }
 
                     // scale
-                    let scaled_tc = (t_tc + 1.0) * 0.5 * (subst.max_time_const - subst.min_time_const) + subst.min_time_const;
+                    let scaled_tc =
+                        (t_tc + 1.0) * 0.5 * (subst.max_time_const - subst.min_time_const)
+                            + subst.min_time_const;
                     let scaled_bias = t_bias * subst.max_weight_and_bias * -1.0; // match sign scaling in C++
 
                     net.neurons[i].timeconst = scaled_tc;
@@ -900,14 +1065,34 @@ impl Genome {
                     let src_t = net.neurons[j].neuron_type;
                     let dst_t = net.neurons[i].neuron_type;
 
-                    if (!subst.allow_input_hidden_links && src_t == crate::genes::NeuronType::Input && dst_t == crate::genes::NeuronType::Hidden) ||
-                       (!subst.allow_input_output_links && src_t == crate::genes::NeuronType::Input && dst_t == crate::genes::NeuronType::Output) ||
-                       (!subst.allow_hidden_hidden_links && src_t == crate::genes::NeuronType::Hidden && dst_t == crate::genes::NeuronType::Hidden && i != j) ||
-                       (!subst.allow_hidden_output_links && src_t == crate::genes::NeuronType::Hidden && dst_t == crate::genes::NeuronType::Output) ||
-                       (!subst.allow_output_hidden_links && src_t == crate::genes::NeuronType::Output && dst_t == crate::genes::NeuronType::Hidden) ||
-                       (!subst.allow_output_output_links && src_t == crate::genes::NeuronType::Output && dst_t == crate::genes::NeuronType::Output && i != j) ||
-                       (!subst.allow_looped_hidden_links && src_t == crate::genes::NeuronType::Hidden && dst_t == crate::genes::NeuronType::Hidden && i == j) ||
-                       (!subst.allow_looped_output_links && src_t == crate::genes::NeuronType::Output && dst_t == crate::genes::NeuronType::Output && i == j)
+                    if (!subst.allow_input_hidden_links
+                        && src_t == crate::genes::NeuronType::Input
+                        && dst_t == crate::genes::NeuronType::Hidden)
+                        || (!subst.allow_input_output_links
+                            && src_t == crate::genes::NeuronType::Input
+                            && dst_t == crate::genes::NeuronType::Output)
+                        || (!subst.allow_hidden_hidden_links
+                            && src_t == crate::genes::NeuronType::Hidden
+                            && dst_t == crate::genes::NeuronType::Hidden
+                            && i != j)
+                        || (!subst.allow_hidden_output_links
+                            && src_t == crate::genes::NeuronType::Hidden
+                            && dst_t == crate::genes::NeuronType::Output)
+                        || (!subst.allow_output_hidden_links
+                            && src_t == crate::genes::NeuronType::Output
+                            && dst_t == crate::genes::NeuronType::Hidden)
+                        || (!subst.allow_output_output_links
+                            && src_t == crate::genes::NeuronType::Output
+                            && dst_t == crate::genes::NeuronType::Output
+                            && i != j)
+                        || (!subst.allow_looped_hidden_links
+                            && src_t == crate::genes::NeuronType::Hidden
+                            && dst_t == crate::genes::NeuronType::Hidden
+                            && i == j)
+                        || (!subst.allow_looped_output_links
+                            && src_t == crate::genes::NeuronType::Output
+                            && dst_t == crate::genes::NeuronType::Output
+                            && i == j)
                     {
                         continue;
                     }
@@ -918,14 +1103,16 @@ impl Genome {
         } else {
             // custom connectivity - map indices
             for entry in &subst.custom_connectivity {
-                if entry.len() < 4 { continue; }
+                if entry.len() < 4 {
+                    continue;
+                }
                 let src_type = entry[0];
                 let src_idx = entry[1] as usize;
                 let dst_type = entry[2];
                 let dst_idx = entry[3] as usize;
 
                 let j = match src_type {
-                    0 => src_idx, // INPUT
+                    0 => src_idx,                                                        // INPUT
                     1 => src_idx, // BIAS treated as input index
                     2 => subst.input_coords.len() + subst.output_coords.len() + src_idx, // HIDDEN
                     3 => subst.input_coords.len() + src_idx, // OUTPUT
@@ -944,8 +1131,12 @@ impl Genome {
                 if subst.custom_conn_obeys_flags {
                     let src_t = net.neurons[j].neuron_type;
                     let dst_t = net.neurons[i].neuron_type;
-                    if (!subst.allow_input_hidden_links && src_t == crate::genes::NeuronType::Input && dst_t == crate::genes::NeuronType::Hidden) ||
-                       (!subst.allow_input_output_links && src_t == crate::genes::NeuronType::Input && dst_t == crate::genes::NeuronType::Output)
+                    if (!subst.allow_input_hidden_links
+                        && src_t == crate::genes::NeuronType::Input
+                        && dst_t == crate::genes::NeuronType::Hidden)
+                        || (!subst.allow_input_output_links
+                            && src_t == crate::genes::NeuronType::Input
+                            && dst_t == crate::genes::NeuronType::Output)
                     {
                         continue;
                     }
@@ -963,39 +1154,63 @@ impl Genome {
             let to_dims = net.neurons[i].substrate_coords.len();
 
             for n in 0..from_dims {
-                if n < t_inputs.len() { t_inputs[n] = net.neurons[j].substrate_coords[n]; }
+                if n < t_inputs.len() {
+                    t_inputs[n] = net.neurons[j].substrate_coords[n];
+                }
             }
             for n in 0..to_dims {
                 let idx = max_dims + n;
-                if idx < t_inputs.len() { t_inputs[idx] = net.neurons[i].substrate_coords[n]; }
+                if idx < t_inputs.len() {
+                    t_inputs[idx] = net.neurons[i].substrate_coords[n];
+                }
             }
 
             if subst.with_distance {
                 let mut sum = 0.0f64;
                 for n in 0..max_dims {
-                    let a = if n < net.neurons[j].substrate_coords.len() { net.neurons[j].substrate_coords[n] } else { 0.0 };
-                    let b = if n < net.neurons[i].substrate_coords.len() { net.neurons[i].substrate_coords[n] } else { 0.0 };
+                    let a = if n < net.neurons[j].substrate_coords.len() {
+                        net.neurons[j].substrate_coords[n]
+                    } else {
+                        0.0
+                    };
+                    let b = if n < net.neurons[i].substrate_coords.len() {
+                        net.neurons[i].substrate_coords[n]
+                    } else {
+                        0.0
+                    };
                     sum += (a - b) * (a - b);
                 }
                 sum = sum.sqrt();
-                if self.num_inputs >= 2 { t_inputs[self.num_inputs - 2] = sum; }
+                if self.num_inputs >= 2 {
+                    t_inputs[self.num_inputs - 2] = sum;
+                }
             }
 
-            if self.num_inputs > 0 { t_inputs[self.num_inputs - 1] = 1.0; }
+            if self.num_inputs > 0 {
+                t_inputs[self.num_inputs - 1] = 1.0;
+            }
 
             t_temp_phenotype.flush();
             t_temp_phenotype.input(t_inputs);
-            for _ in 0..dp { t_temp_phenotype.activate(); }
+            for _ in 0..dp {
+                t_temp_phenotype.activate();
+            }
 
             let out = t_temp_phenotype.output();
             let mut t_link = 0.0;
             let mut t_weight = 0.0;
 
             if subst.query_weights_only {
-                if !out.is_empty() { t_weight = out[0]; }
+                if !out.is_empty() {
+                    t_weight = out[0];
+                }
             } else {
-                if !out.is_empty() { t_link = out[0]; }
-                if out.len() > 1 { t_weight = out[1]; }
+                if !out.is_empty() {
+                    t_link = out[0];
+                }
+                if out.len() > 1 {
+                    t_weight = out[1];
+                }
             }
 
             if (t_link > 0.0 && !subst.query_weights_only) || subst.query_weights_only {
@@ -1054,7 +1269,9 @@ impl Genome {
         };
 
         // Base case: inputs and bias have depth = current depth
-        if neuron.neuron_type == crate::genes::NeuronType::Input || neuron.neuron_type == crate::genes::NeuronType::Bias {
+        if neuron.neuron_type == crate::genes::NeuronType::Input
+            || neuron.neuron_type == crate::genes::NeuronType::Bias
+        {
             return depth;
         }
 
@@ -1116,7 +1333,9 @@ impl Genome {
         self.build_phenotype(&mut net);
 
         let n = net.neurons.len();
-        if n == 0 { return false; }
+        if n == 0 {
+            return false;
+        }
 
         // compute in-degree
         let mut indeg = vec![0usize; n];
@@ -1132,14 +1351,20 @@ impl Genome {
 
         // Kahn's algorithm
         let mut q: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
-        for i in 0..n { if indeg[i] == 0 { q.push_back(i); } }
+        for i in 0..n {
+            if indeg[i] == 0 {
+                q.push_back(i);
+            }
+        }
 
         let mut visited = 0usize;
         while let Some(v) = q.pop_front() {
             visited += 1;
             for &w in &adj[v] {
                 indeg[w] -= 1;
-                if indeg[w] == 0 { q.push_back(w); }
+                if indeg[w] == 0 {
+                    q.push_back(w);
+                }
             }
         }
 

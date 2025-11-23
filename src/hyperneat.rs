@@ -71,9 +71,15 @@ impl Substrate {
     /// Maximum dimensionality across input/output/hidden coordinates
     pub fn get_max_dims(&self) -> usize {
         let mut md = 0usize;
-        for p in &self.input_coords { md = md.max(p.len()); }
-        for p in &self.output_coords { md = md.max(p.len()); }
-        for p in &self.hidden_coords { md = md.max(p.len()); }
+        for p in &self.input_coords {
+            md = md.max(p.len());
+        }
+        for p in &self.output_coords {
+            md = md.max(p.len());
+        }
+        for p in &self.hidden_coords {
+            md = md.max(p.len());
+        }
         md
     }
 
@@ -87,7 +93,9 @@ impl Substrate {
     /// Minimal number of CPPN outputs (if leaky substrate we need two extra outputs)
     pub fn get_min_cppn_outputs(&self) -> usize {
         let mut outs = if self.query_weights_only { 1 } else { 2 };
-        if self.leaky { outs += 2; }
+        if self.leaky {
+            outs += 2;
+        }
         outs
     }
 

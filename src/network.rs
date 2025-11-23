@@ -2,7 +2,6 @@
 
 use crate::genes::{ActivationFunction, NeuronType};
 
-
 /// Connection between neurons (phenotype)
 #[derive(Debug, Clone)]
 pub struct Connection {
@@ -20,15 +19,15 @@ pub struct Connection {
 impl PartialEq for Connection {
     fn eq(&self, other: &Self) -> bool {
         // comparison operator (nessesary for boost::python)
-        self.source_neuron_idx == other.source_neuron_idx &&
-        self.target_neuron_idx == other.target_neuron_idx
+        self.source_neuron_idx == other.source_neuron_idx
+            && self.target_neuron_idx == other.target_neuron_idx
     }
 }
 
 /// Neuron in the phenotype network
 #[derive(Debug, Clone)]
 pub struct Neuron {
-    pub activesum: f64, // synaptic input
+    pub activesum: f64,  // synaptic input
     pub activation: f64, // output after activation function
     // misc parameters
     pub a: f64,
@@ -53,9 +52,9 @@ pub struct Neuron {
 
 impl PartialEq for Neuron {
     fn eq(&self, other: &Self) -> bool {
-        self.neuron_type == other.neuron_type &&
-        self.split_y == other.split_y &&
-        self.activation_function_type == other.activation_function_type
+        self.neuron_type == other.neuron_type
+            && self.split_y == other.split_y
+            && self.activation_function_type == other.activation_function_type
     }
 }
 
@@ -135,7 +134,9 @@ impl NeuralNetwork {
     pub fn activate(&mut self) {
         // accumulate inputs
         for conn in &self.connections {
-            if conn.source_neuron_idx < self.neurons.len() && conn.target_neuron_idx < self.neurons.len() {
+            if conn.source_neuron_idx < self.neurons.len()
+                && conn.target_neuron_idx < self.neurons.len()
+            {
                 let src = self.neurons[conn.source_neuron_idx].activation;
                 self.neurons[conn.target_neuron_idx].activesum += src * conn.weight;
             }
@@ -154,7 +155,9 @@ impl NeuralNetwork {
     /// Return outputs (last `num_outputs` neurons are treated as outputs)
     pub fn output(&self) -> Vec<f64> {
         let mut out = Vec::new();
-        if self.num_outputs == 0 { return out; }
+        if self.num_outputs == 0 {
+            return out;
+        }
         // assume outputs are placed after inputs; original ordering depends on genome
         // Here we pick the last `num_outputs` neurons
         let start = self.neurons.len().saturating_sub(self.num_outputs);
@@ -172,12 +175,16 @@ fn apply_activation(ftype: crate::genes::ActivationFunction, x: f64, _a: f64, _b
             let v = 1.0 / (1.0 + (-4.924273 * x).exp());
             2.0 * v - 1.0
         }
-        crate::genes::ActivationFunction::UnsignedSigmoid => {
-            1.0 / (1.0 + (-4.924273 * x).exp())
-        }
+        crate::genes::ActivationFunction::UnsignedSigmoid => 1.0 / (1.0 + (-4.924273 * x).exp()),
         crate::genes::ActivationFunction::Tanh => x.tanh(),
         crate::genes::ActivationFunction::Linear => x,
-        crate::genes::ActivationFunction::Relu => if x > 0.0 { x } else { 0.0 },
+        crate::genes::ActivationFunction::Relu => {
+            if x > 0.0 {
+                x
+            } else {
+                0.0
+            }
+        }
         crate::genes::ActivationFunction::Softplus => (1.0 + x.exp()).ln(),
         // fallback to tanh for other types for now
         _ => x.tanh(),

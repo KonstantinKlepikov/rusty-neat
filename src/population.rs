@@ -1,9 +1,9 @@
 //! Population and evolution module
 
 use crate::genome::Genome;
+use crate::innovation::InnovationDatabase;
 use crate::parameters::Parameters;
 use crate::species::Species;
-use crate::innovation::InnovationDatabase;
 use rand::Rng;
 
 #[derive(Debug, Clone)]
@@ -38,15 +38,27 @@ impl Population {
         let mut max_innov_id: u64 = 0;
         for g in &genomes {
             for n in &g.neuron_genes {
-                if n.id > max_neuron_id { max_neuron_id = n.id; }
+                if n.id > max_neuron_id {
+                    max_neuron_id = n.id;
+                }
             }
             for l in &g.link_genes {
-                if l.innovation_id > max_innov_id { max_innov_id = l.innovation_id; }
+                if l.innovation_id > max_innov_id {
+                    max_innov_id = l.innovation_id;
+                }
             }
         }
         // next ids should be one greater than max found (or 1 if none)
-        let next_neuron = if max_neuron_id == 0 { 1 } else { max_neuron_id + 1 };
-        let next_innov = if max_innov_id == 0 { 1 } else { max_innov_id + 1 };
+        let next_neuron = if max_neuron_id == 0 {
+            1
+        } else {
+            max_neuron_id + 1
+        };
+        let next_innov = if max_innov_id == 0 {
+            1
+        } else {
+            max_innov_id + 1
+        };
         let innov_db = InnovationDatabase::new(next_neuron, next_innov);
 
         Population {
@@ -60,25 +72,37 @@ impl Population {
 
     /// Helper: apply mutate_add_neuron for genome at index `gidx` using the shared InnovationDatabase
     pub fn mutate_add_neuron_for(&mut self, gidx: usize, rng: &mut impl Rng) -> bool {
-        if gidx >= self.genomes.len() { return false; }
+        if gidx >= self.genomes.len() {
+            return false;
+        }
         self.genomes[gidx].mutate_add_neuron(&mut self.innovation_db, &self.parameters, rng)
     }
 
     /// Helper: apply mutate_add_link for genome at index `gidx` using the shared InnovationDatabase
     pub fn mutate_add_link_for(&mut self, gidx: usize, rng: &mut impl Rng) -> bool {
-        if gidx >= self.genomes.len() { return false; }
+        if gidx >= self.genomes.len() {
+            return false;
+        }
         self.genomes[gidx].mutate_add_link(&mut self.innovation_db, &self.parameters, rng)
     }
 
     /// Helper: apply mutate_remove_link for genome at index `gidx` using population parameters
     pub fn mutate_remove_link_for(&mut self, gidx: usize, rng: &mut impl Rng) -> bool {
-        if gidx >= self.genomes.len() { return false; }
+        if gidx >= self.genomes.len() {
+            return false;
+        }
         self.genomes[gidx].mutate_remove_link(&self.parameters, rng)
     }
 
     /// Helper: apply mutate_remove_simple_neuron for genome at index `gidx` using shared InnovationDatabase
     pub fn mutate_remove_simple_neuron_for(&mut self, gidx: usize, rng: &mut impl Rng) -> bool {
-        if gidx >= self.genomes.len() { return false; }
-        self.genomes[gidx].mutate_remove_simple_neuron(&mut self.innovation_db, &self.parameters, rng)
+        if gidx >= self.genomes.len() {
+            return false;
+        }
+        self.genomes[gidx].mutate_remove_simple_neuron(
+            &mut self.innovation_db,
+            &self.parameters,
+            rng,
+        )
     }
 }

@@ -1,13 +1,36 @@
-use rusty_neat::*;
 use rand::rngs::ThreadRng;
+use rusty_neat::*;
 
 #[test]
 fn randomize_and_mutate_weights() {
     let mut g = Genome::default();
     // add two neurons and one link
-    g.neuron_genes.push(crate::genes::NeuronGene::new(1, crate::genes::NeuronType::Input, 0, 0, 0.0, 1.0, 0.0, 1.0, 0.0, crate::genes::ActivationFunction::Linear));
-    g.neuron_genes.push(crate::genes::NeuronGene::new(2, crate::genes::NeuronType::Output, 0, 0, 0.0, 1.0, 0.0, 1.0, 0.0, crate::genes::ActivationFunction::Linear));
-    g.link_genes.push(crate::genes::LinkGene::new(1, 2, 1, 0.5, false));
+    g.neuron_genes.push(crate::genes::NeuronGene::new(
+        1,
+        crate::genes::NeuronType::Input,
+        0,
+        0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        crate::genes::ActivationFunction::Linear,
+    ));
+    g.neuron_genes.push(crate::genes::NeuronGene::new(
+        2,
+        crate::genes::NeuronType::Output,
+        0,
+        0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        crate::genes::ActivationFunction::Linear,
+    ));
+    g.link_genes
+        .push(crate::genes::LinkGene::new(1, 2, 1, 0.5, false));
 
     let mut params = Parameters::default();
     params.min_weight = -2.0;
@@ -17,7 +40,10 @@ fn randomize_and_mutate_weights() {
     // randomize
     g.randomize_link_weights(&params, &mut rng);
     let w = g.link_genes[0].weight;
-    assert!(w >= params.min_weight && w <= params.max_weight, "randomize produced out-of-range weight");
+    assert!(
+        w >= params.min_weight && w <= params.max_weight,
+        "randomize produced out-of-range weight"
+    );
 
     // set deterministic mutation settings
     params.mutate_weights_severe_prob = 0.0; // non-severe

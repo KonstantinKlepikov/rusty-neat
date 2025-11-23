@@ -1,5 +1,5 @@
-use rusty_neat::*;
 use rand::rngs::ThreadRng;
+use rusty_neat::*;
 
 #[test]
 fn innovations_are_shared_between_genomes() {
@@ -7,9 +7,32 @@ fn innovations_are_shared_between_genomes() {
 
     // create minimal genomes: input id=1, output id=2, one link 1->2 with innov 1
     let mut g1 = Genome::default();
-    g1.neuron_genes.push(crate::genes::NeuronGene::new(1, crate::genes::NeuronType::Input, 0, 0, 0.0, 1.0, 0.0, 1.0, 0.0, crate::genes::ActivationFunction::Linear));
-    g1.neuron_genes.push(crate::genes::NeuronGene::new(2, crate::genes::NeuronType::Output, 0, 0, 0.0, 1.0, 0.0, 1.0, 0.0, crate::genes::ActivationFunction::Linear));
-    g1.link_genes.push(crate::genes::LinkGene::new(1, 2, 1, 1.0, false));
+    g1.neuron_genes.push(crate::genes::NeuronGene::new(
+        1,
+        crate::genes::NeuronType::Input,
+        0,
+        0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        crate::genes::ActivationFunction::Linear,
+    ));
+    g1.neuron_genes.push(crate::genes::NeuronGene::new(
+        2,
+        crate::genes::NeuronType::Output,
+        0,
+        0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        crate::genes::ActivationFunction::Linear,
+    ));
+    g1.link_genes
+        .push(crate::genes::LinkGene::new(1, 2, 1, 1.0, false));
 
     let g2 = g1.clone();
 
@@ -38,5 +61,8 @@ fn innovations_are_shared_between_genomes() {
 
     assert!(!new0.is_empty(), "no new neuron in genome 0");
     assert!(!new1.is_empty(), "no new neuron in genome 1");
-    assert_eq!(new0[0], new1[0], "innovations were not shared between genomes");
+    assert_eq!(
+        new0[0], new1[0],
+        "innovations were not shared between genomes"
+    );
 }
