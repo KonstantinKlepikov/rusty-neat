@@ -68,6 +68,59 @@ impl Substrate {
         }
     }
 
+    /// Create a Substrate with explicit input/hidden/output coordinates.
+    /// Matches the C++ Substrate(inputs, hidden, outputs) constructor semantics
+    /// (sets several flags suitable for explicit substrates).
+    pub fn with_coords(
+        input_coords: Vec<Vec<f64>>,
+        hidden_coords: Vec<Vec<f64>>,
+        output_coords: Vec<Vec<f64>>,
+    ) -> Self {
+        Self {
+            input_coords,
+            output_coords,
+            hidden_coords,
+            leaky: false,
+            with_distance: false,
+            min_time_const: 0.1,
+            max_time_const: 1.0,
+            max_weight_and_bias: 5.0,
+            output_nodes_activation: ActivationFunction::UnsignedSigmoid,
+            hidden_nodes_activation: ActivationFunction::UnsignedSigmoid,
+            custom_connectivity: Vec::new(),
+            custom_conn_obeys_flags: false,
+            allow_input_hidden_links: true,
+            allow_input_output_links: false,
+            allow_hidden_hidden_links: false,
+            allow_hidden_output_links: true,
+            allow_output_hidden_links: false,
+            allow_output_output_links: false,
+            allow_looped_hidden_links: false,
+            allow_looped_output_links: false,
+            query_weights_only: false,
+        }
+    }
+
+    /// Replace neurons coordinates (inputs, hidden, outputs). Mirrors C++ SetNeurons.
+    pub fn set_neurons(
+        &mut self,
+        input_coords: Vec<Vec<f64>>,
+        hidden_coords: Vec<Vec<f64>>,
+        output_coords: Vec<Vec<f64>>,
+    ) {
+        self.input_coords = input_coords;
+        self.hidden_coords = hidden_coords;
+        self.output_coords = output_coords;
+    }
+
+    /// Print substrate info to stderr (useful for debugging)
+    pub fn print_info(&self) {
+        eprintln!("Inputs: {}", self.input_coords.len());
+        eprintln!("Hidden: {}", self.hidden_coords.len());
+        eprintln!("Outputs: {}", self.output_coords.len());
+        eprintln!("Dimensions: {}", self.get_min_cppn_inputs());
+    }
+
     /// Maximum dimensionality across input/output/hidden coordinates
     pub fn get_max_dims(&self) -> usize {
         let mut md = 0usize;

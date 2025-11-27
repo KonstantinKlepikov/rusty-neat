@@ -1,7 +1,7 @@
 //! Genome and gene module (neurons, links)
 
 // === Imports analogous to C++ standard and Boost libraries ===
-use crate::genes::{ActivationFunction, LinkGene, NeuronGene, TraitValue};
+use crate::genes::{ActivationFunction, LinkGene, NeuronGene, TraitValue, Gene as GenomeGene};
 use crate::hyperneat::Substrate;
 use crate::innovation::InnovationDatabase;
 use crate::network::{Connection as PhConnection, NeuralNetwork, Neuron as PhNeuron};
@@ -10,6 +10,7 @@ use rand::Rng;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult};
+use crate::utils::{clamp_f64, scale_f64};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
@@ -31,11 +32,44 @@ pub struct GenomeInitStruct {
 }
 
 /// Use Gene defined in `genes.rs` for trait storage and manipulation
-use crate::genes::Gene as GenomeGene;
 
-/// Placeholder for PhenotypeBehavior struct (to be implemented)
+/// PhenotypeBehavior: base characterization container used for novelty search
+/// and custom behavior descriptors. Mirrors the C++ MultiNEAT base class.
 #[derive(Debug, Clone, PartialEq)]
-pub struct PhenotypeBehavior;
+pub struct PhenotypeBehavior {
+    /// A 2D matrix of doubles with arbitrary size representing the behavior
+    pub m_data: Vec<Vec<f64>>,
+}
+
+impl PhenotypeBehavior {
+    /// Create an empty PhenotypeBehavior
+    pub fn new() -> Self {
+        Self { m_data: Vec::new() }
+    }
+
+    /// Acquire behavior from a genome. Default implementation does nothing
+    /// and returns false. Override in domain-specific code.
+    pub fn acquire(&mut self, _genome: &Genome) -> bool {
+        // Default: not acquired
+        false
+    }
+
+    /// Compute distance to another behavior. Default returns 0.0. Override
+    /// when implementing a meaningful metric.
+    pub fn distance_to(&self, other: &PhenotypeBehavior) -> f64 {
+        // Default: simple zero-distance. Domain code should override.
+        if self.m_data == other.m_data {
+            0.0
+        } else {
+            0.0
+        }
+    }
+
+    /// Whether the behavior is considered successful. Default returns true.
+    pub fn successful(&self) -> bool {
+        true
+    }
+}
 
 /// Central NEAT genome structure (analog of C++ class Genome)
 #[derive(Debug, Clone, PartialEq)]
@@ -384,23 +418,13 @@ impl Genome {
                 }
 
                 // clamp
-                if w < params.min_weight {
-                    w = params.min_weight;
-                }
-                if w > params.max_weight {
-                    w = params.max_weight;
-                }
+                w = clamp_f64(w, params.min_weight, params.max_weight);
                 lg.set_weight(w);
                 did_mutate = true;
             } else if t_severe_mutation {
                 if rng.random::<f64>() < params.weight_mutation_rate {
                     let mut w = rng.random_range(params.min_weight..params.max_weight);
-                    if w < params.min_weight {
-                        w = params.min_weight;
-                    }
-                    if w > params.max_weight {
-                        w = params.max_weight;
-                    }
+                    w = clamp_f64(w, params.min_weight, params.max_weight);
                     lg.set_weight(w);
                     did_mutate = true;
                 }
@@ -471,12 +495,7 @@ impl Genome {
                 let delta =
                     (rng.random::<f64>() * 2.0 - 1.0) * params.activation_a_mutation_max_power;
                 ng.a += delta;
-                if ng.a < params.min_activation_a {
-                    ng.a = params.min_activation_a;
-                }
-                if ng.a > params.max_activation_a {
-                    ng.a = params.max_activation_a;
-                }
+                ng.a = clamp_f64(ng.a, params.min_activation_a, params.max_activation_a);
             }
         }
         true
@@ -491,12 +510,7 @@ impl Genome {
                 let delta =
                     (rng.random::<f64>() * 2.0 - 1.0) * params.activation_b_mutation_max_power;
                 ng.b += delta;
-                if ng.b < params.min_activation_b {
-                    ng.b = params.min_activation_b;
-                }
-                if ng.b > params.max_activation_b {
-                    ng.b = params.max_activation_b;
-                }
+                ng.b = clamp_f64(ng.b, params.min_activation_b, params.max_activation_b);
             }
         }
         true
@@ -529,12 +543,11 @@ impl Genome {
                 let delta =
                     (rng.random::<f64>() * 2.0 - 1.0) * params.timeconstant_mutation_max_power;
                 ng.timeconstant += delta;
-                if ng.timeconstant < params.min_neuron_time_constant {
-                    ng.timeconstant = params.min_neuron_time_constant;
-                }
-                if ng.timeconstant > params.max_neuron_time_constant {
-                    ng.timeconstant = params.max_neuron_time_constant;
-                }
+                ng.timeconstant = clamp_f64(
+                    ng.timeconstant,
+                    params.min_neuron_time_constant,
+                    params.max_neuron_time_constant,
+                );
             }
         }
         true
@@ -548,12 +561,7 @@ impl Genome {
             {
                 let delta = (rng.random::<f64>() * 2.0 - 1.0) * params.bias_mutation_max_power;
                 ng.bias += delta;
-                if ng.bias < params.min_neuron_bias {
-                    ng.bias = params.min_neuron_bias;
-                }
-                if ng.bias > params.max_neuron_bias {
-                    ng.bias = params.max_neuron_bias;
-                }
+                ng.bias = clamp_f64(ng.bias, params.min_neuron_bias, params.max_neuron_bias);
             }
         }
         true
@@ -1031,23 +1039,25 @@ impl Genome {
                 if out.len() >= 2 {
                     let mut t_tc = out[self.num_outputs.saturating_sub(2)];
                     let mut t_bias = out[self.num_outputs.saturating_sub(1)];
-                    // clamp
-                    if t_tc < -1.0 {
-                        t_tc = -1.0;
-                    } else if t_tc > 1.0 {
-                        t_tc = 1.0;
-                    }
-                    if t_bias < -1.0 {
-                        t_bias = -1.0;
-                    } else if t_bias > 1.0 {
-                        t_bias = 1.0;
-                    }
+                    // clamp using utils
+                    t_tc = clamp_f64(t_tc, -1.0, 1.0);
+                    t_bias = clamp_f64(t_bias, -1.0, 1.0);
 
-                    // scale
-                    let scaled_tc =
-                        (t_tc + 1.0) * 0.5 * (subst.max_time_const - subst.min_time_const)
-                            + subst.min_time_const;
-                    let scaled_bias = t_bias * subst.max_weight_and_bias * -1.0; // match sign scaling in C++
+                    // scale using utils (map [-1,1] -> [min_time_const, max_time_const])
+                    let scaled_tc = scale_f64(
+                        t_tc,
+                        -1.0,
+                        1.0,
+                        subst.min_time_const,
+                        subst.max_time_const,
+                    );
+                    let scaled_bias = scale_f64(
+                        t_bias,
+                        -1.0,
+                        1.0,
+                        subst.max_weight_and_bias * -1.0,
+                        subst.max_weight_and_bias,
+                    );
 
                     net.neurons[i].timeconst = scaled_tc;
                     net.neurons[i].bias = scaled_bias;

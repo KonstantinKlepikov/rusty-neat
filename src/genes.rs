@@ -1,6 +1,7 @@
 //! Gene definitions moved out of genome.rs
 use rand::prelude::*;
 use std::collections::HashMap as StdHashMap;
+use crate::utils::{clamp_i64, clamp_f64};
 
 /// Trait parameter details mirroring C++ TraitParameters (simplified)
 #[derive(Debug, Clone)]
@@ -753,7 +754,7 @@ fn mutate_trait_map(
                             let mut val = cur;
                             while val == cur {
                                 let delta = rng.random_range(-(*mut_power)..=*mut_power);
-                                val = (val + delta).clamp(*min, *max);
+                                val = clamp_i64(val + delta, *min, *max);
                             }
                             map.insert(name.clone(), TraitValue::Int(val));
                             did_mutate = true;
@@ -779,12 +780,7 @@ fn mutate_trait_map(
                             let mut val = cur;
                             while (val - cur).abs() < std::f64::EPSILON {
                                 val += (rng.random::<f64>() * 2.0 - 1.0) * (*mut_power);
-                                if val < *min {
-                                    val = *min;
-                                }
-                                if val > *max {
-                                    val = *max;
-                                }
+                                val = clamp_f64(val, *min, *max);
                             }
                             map.insert(name.clone(), TraitValue::Float(val));
                             did_mutate = true;

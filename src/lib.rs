@@ -8,6 +8,7 @@ pub mod population;
 pub mod random;
 pub mod serialization;
 pub mod species;
+pub mod utils;
 
 pub use genome::*;
 pub use network::*;
@@ -17,3 +18,4 @@ pub use random::*;
 pub use species::*;
 // pub use serialization::*;
 pub use hyperneat::*;
+pub use utils::*;

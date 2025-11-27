@@ -168,24 +168,24 @@ impl NeuralNetwork {
     }
 }
 
-fn apply_activation(ftype: crate::genes::ActivationFunction, x: f64, _a: f64, _b: f64) -> f64 {
+fn apply_activation(ftype: ActivationFunction, x: f64, _a: f64, _b: f64) -> f64 {
     match ftype {
-        crate::genes::ActivationFunction::SignedSigmoid => {
+        ActivationFunction::SignedSigmoid => {
             // classic NEAT signed sigmoid approximation
             let v = 1.0 / (1.0 + (-4.924273 * x).exp());
             2.0 * v - 1.0
         }
-        crate::genes::ActivationFunction::UnsignedSigmoid => 1.0 / (1.0 + (-4.924273 * x).exp()),
-        crate::genes::ActivationFunction::Tanh => x.tanh(),
-        crate::genes::ActivationFunction::Linear => x,
-        crate::genes::ActivationFunction::Relu => {
+        ActivationFunction::UnsignedSigmoid => 1.0 / (1.0 + (-4.924273 * x).exp()),
+        ActivationFunction::Tanh => x.tanh(),
+        ActivationFunction::Linear => x,
+        ActivationFunction::Relu => {
             if x > 0.0 {
                 x
             } else {
                 0.0
             }
         }
-        crate::genes::ActivationFunction::Softplus => (1.0 + x.exp()).ln(),
+        ActivationFunction::Softplus => (1.0 + x.exp()).ln(),
         // fallback to tanh for other types for now
         _ => x.tanh(),
     }
