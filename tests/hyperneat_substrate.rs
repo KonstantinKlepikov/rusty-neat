@@ -1,6 +1,6 @@
-use rusty_neat::Substrate;
 use rusty_neat::Genome;
-use rusty_neat::genes::{NeuronGene, LinkGene, NeuronType, ActivationFunction};
+use rusty_neat::Substrate;
+use rusty_neat::genes::{ActivationFunction, LinkGene, NeuronGene, NeuronType};
 
 // Test that Substrate reports the correct maximum dimensionality and that
 // the computed minimal CPPN input/output sizes follow the formulae used in
@@ -99,7 +99,11 @@ fn make_constant_cppn(cppn_inputs: usize, cppn_outputs: usize) -> Genome {
     // Assign neuron ids: inputs 1..cppn_inputs, outputs next
     let mut next_id: u64 = 1;
     for i in 0..cppn_inputs {
-        let ntype = if i + 1 == cppn_inputs { NeuronType::Bias } else { NeuronType::Input };
+        let ntype = if i + 1 == cppn_inputs {
+            NeuronType::Bias
+        } else {
+            NeuronType::Input
+        };
         let ng = NeuronGene::new(
             next_id,
             ntype,

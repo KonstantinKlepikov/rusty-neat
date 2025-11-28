@@ -1,5 +1,5 @@
-use rusty_neat::PhenotypeBehavior;
 use rusty_neat::Genome;
+use rusty_neat::PhenotypeBehavior;
 
 // Verify default PhenotypeBehavior contracts:
 // - newly created instance has empty `m_data`

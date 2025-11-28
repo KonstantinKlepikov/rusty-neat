@@ -1,16 +1,16 @@
 //! Genome and gene module (neurons, links)
 
 // === Imports analogous to C++ standard and Boost libraries ===
-use crate::genes::{ActivationFunction, LinkGene, NeuronGene, TraitValue, Gene as GenomeGene};
+use crate::genes::{ActivationFunction, Gene as GenomeGene, LinkGene, NeuronGene, TraitValue};
 use crate::hyperneat::Substrate;
 use crate::innovation::InnovationDatabase;
 use crate::network::{Connection as PhConnection, NeuralNetwork, Neuron as PhNeuron};
 use crate::parameters::Parameters;
+use crate::utils::{clamp_f64, scale_f64};
 use rand::Rng;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult};
-use crate::utils::{clamp_f64, scale_f64};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
@@ -1044,13 +1044,8 @@ impl Genome {
                     t_bias = clamp_f64(t_bias, -1.0, 1.0);
 
                     // scale using utils (map [-1,1] -> [min_time_const, max_time_const])
-                    let scaled_tc = scale_f64(
-                        t_tc,
-                        -1.0,
-                        1.0,
-                        subst.min_time_const,
-                        subst.max_time_const,
-                    );
+                    let scaled_tc =
+                        scale_f64(t_tc, -1.0, 1.0, subst.min_time_const, subst.max_time_const);
                     let scaled_bias = scale_f64(
                         t_bias,
                         -1.0,

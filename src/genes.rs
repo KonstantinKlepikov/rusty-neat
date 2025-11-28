@@ -1,7 +1,7 @@
 //! Gene definitions moved out of genome.rs
+use crate::utils::{clamp_f64, clamp_i64};
 use rand::prelude::*;
 use std::collections::HashMap as StdHashMap;
-use crate::utils::{clamp_i64, clamp_f64};
 
 /// Trait parameter details mirroring C++ TraitParameters (simplified)
 #[derive(Debug, Clone)]
