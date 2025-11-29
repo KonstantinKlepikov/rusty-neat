@@ -1,5 +1,5 @@
-use rand::SeedableRng;
-use rand::rngs::StdRng;
+mod common;
+use common::seeded_rng;
 use rusty_neat::genes::{ActivationFunction, Gene, LinkGene, NeuronGene, NeuronType, TraitValue};
 use rusty_neat::genes::{TraitDetail, TraitParameters};
 use rusty_neat::genome::Genome;
@@ -85,7 +85,7 @@ fn test_mutate_and_randomize_traits() {
     gg.traits.insert("t1".to_string(), TraitValue::Int(0));
     g.genome_gene = Some(gg);
 
-    let mut rng = StdRng::seed_from_u64(123);
+    let mut rng = seeded_rng(123);
 
     // Mutation should flip or change traits because prob=1.0
     assert!(g.mutate_neuron_traits(&params, &mut rng));

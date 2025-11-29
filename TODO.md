@@ -38,7 +38,7 @@
   - [ ] Сравнивайте результаты работы Rust-версии с оригинальной C++.
   - [ ] Рекомендуемые подпункты по приоритету:
     - [x] Substrate / HyperNEAT helpers — unit-тесты для `get_max_dims`, `get_min_cppn_inputs`, `get_min_cppn_outputs`, `with_coords`, `set_neurons`, `print_info`.
-    - [ ] BuildHyperNEATPhenotype — быстрый smoke-test: детерминированный CPPN/phenotype, проверка количества связей, фильтрации по флагам и масштабирования весов (`max_weight_and_bias`).
+    - [x] BuildHyperNEATPhenotype — быстрый smoke-test: детерминированный CPPN/phenotype, проверка количества связей, фильтрации по флагам и масштабирования весов (`max_weight_and_bias`).
     - [ ] Traits behaviour — unit-тесты для `init_trait_map` и `mutate_trait_map`: replace vs perturb, clamping, dep_key/dep_values, roulette для set/string.
     - [ ] PhenotypeBehavior — тесты контрактов: `acquire()` (false по-умолчанию), `distance_to()` (0 для идентичных `m_data`), `successful()` (true по-умолчанию), сравнение `m_data`.
     - [ ] Parameters ↔ Traits integration — небольшие интеграционные тесты: `SetNeuronTraitParameters`/`SetLinkTraitParameters` + `Genome::randomize_traits`.
