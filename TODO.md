@@ -52,27 +52,87 @@
 
     Этапы реализации биндингов на Python (подпункты)
 
-    - [x] Инвентаризация и согласование API
+    - Фаза 0 — Инвентаризация и согласование API
+
       - [x] Собрать полный список экспортируемых типов и методов (см. `research/python_integration.md`).
       - [x] Решить совместимость pickle/серриализации и ожидания NumPy I/O.
-    - [x] Skeleton crate
+      - [ ] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
+
+    - Фаза 1 — Дизайн API
+
+      - [ ] Решить контракты владения/потоков: `Arc<Mutex<T>>` vs `PyRef` для каждого экспортируемого класса.
+      - [ ] Спроектировать Python‑уровень: какие поля делать свойствами, какие методы — напрямую, какие пакеты — упаковывать в маленькие Py‑классы (LinkGene/NeuronGene).
+      - [ ] Документировать соглашения поPickle/Сериализации (совместимость C++ → Rust — опционально).
+
+    - Фаза 2 — Создание skeleton crate `rusty_neat_py`
+
       - [x] Создать `rusty_neat_py` с `Cargo.toml` и `src/lib.rs` (#[pymodule]).
       - [x] Реализовать минимальные `PyGenome` и `PyNeuralNetwork` как скелетоны для контрактов и smoke-tests.
-    - [ ] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
-    - [ ] Thin wrappers против реальной реализации
-      - [ ] Подключить локальную зависимость на основной crate (`path = ".."`) и обернуть реальные типы (`Genome`, `NeuralNetwork`, `Parameters`, `Substrate`, `Rng`).
-      - [ ] Выбрать стратегию владения: `Arc<Mutex<T>>` или `Py<PyAny>`-совместимый подход (рекомендация: `Arc<RwLock<T>>`).
-    - [ ] NumPy и буферная совместимость
-      - [ ] Использовать `pyo3-ndarray` / `ndarray` для приёма и возврата `ndarray` в `NeuralNetwork::input/output`.
-      - [ ] Добавить быстрые пути для Python sequences и `numpy.ndarray`.
-    - [ ] Pickling и сериализация
-      - [ ] Реализовать `__getstate__/__setstate__` через serde (bincode) или вручную сериализовать важные поля.
-      - [ ] Документировать несовместимость с оригинальными C++ pickle-байтами (если она будет).
-    - [ ] Тесты и совместимость
-      - [ ] Pytest-совместимые smoke-тесты, использующие venv и собранный wheel (maturin develop).
-      - [ ] Тесты NumPy round-trip и pickling round-trip.
-    - [ ] CI и публикация
-      - [ ] Добавить GitHub Actions, которые собирают колёса через `maturin build` на целевых платформах и запускают pytest.
+      - [ ] Создать crate в workspace с `crate-type = ["cdylib"]`, добавить зависимости `pyo3`, `pyo3-ndarray`, `ndarray`, и локальную зависимость `rusty_neat`.
+      - [ ] Добавить `#[pymodule]` и регистрации базовых классов (`PyGenome`, `PyNeuralNetwork`, `PyParameters`, `PySubstrate`, `PyRNG`) с минимальными конструкторами/методами.
+      - [ ] Добавить пример `maturin develop` запуск в README и basic smoke example на Python.
+
+    - Фаза 3 — Ядро биндингов
+
+      - [ ] Реализовать `PyNeuralNetwork` с поддержкой `Input` из Python list и `PyArray` (через `pyo3-ndarray`), `Activate`, `Output` и сохранение/загрузку.
+      - [ ] Реализовать `PyGenome` с `BuildPhenotype` и `BuildHyperNEATPhenotype` (принятие `PySubstrate`).
+      - [ ] Экспортировать ключевые структуры: `LinkGene`, `NeuronGene`, `GenomeInitStruct` (как простые `pyclass`/namedtuple).
+      - [ ] Реализовать минимальные маппинги контейнеров (vec ↔ list) и provide light iterators for large lists.
+
+    - Фаза 4 — Traits / Parameters / Substrate
+
+      - [ ] Экспортировать `Parameters` с API trait management: `ListNeuronTraitParameters`, `SetNeuronTraitParameters`, `GetNeuronTraitParameters` и т.д.
+      - [ ] Реализовать `PySubstrate` с флагами (allow_input_output_links ...) и методами `GetMinCPPNInputs/GetMinCPPNOutputs`.
+      - [ ] Pickling для `Parameters`/`Substrate` (implement `__getstate__/__setstate__`).
+
+    - Фаза 5 — Population / Species / PhenotypeBehavior
+
+      - [ ] Реализовать `PyPopulation` с методами `Epoch`, `Tick`, `GetBestGenome` и доступом к `Species`/`Genome` через ссылочные обёртки.
+      - [ ] Экспорт `PhenotypeBehavior` и его контрактных методов (Acquire, Distance_To, Successful).
+      - [ ] Подумать про освобождение GIL в тяжёлых операциях (use `py.allow_threads`).
+
+    - Фаза 6 — Тесты и CI
+      - [ ] Добавить pytest smoke tests, взяв примеры из `cneat/MultiNEAT/examples` (TestNEAT_xor, TestHyperNEAT_xor и др.) и адаптировать их для Rust биндингов.
+      - [ ] Добавить GitHub Actions job: `maturin build` → `pip install target/wheels/*.whl` → `pytest`.
+      - [ ] Маркировать тяжёлые/долгие тесты как `@pytest.mark.slow` или запускать в nightly workflow.
+
+    - Фаза 7 — Release и совместимость
+      - [ ] Выстроить политику по версии API и декларацию несовместимости pickles с C++ при наличии.
+      - [ ] Подготовить `maturin` сборки для целевых платформ и инструкцию публикации на PyPI.
+
+    - Риски и замечания
+      - [ ] Copy overhead: для больших векторов отдавать предпочтение `PyArray`/views.
+      - [ ] Pickle‑совместимость с C++ редко достижима «бесплатно» — документировать и предоставить миграционные утилиты при необходимости.
+
+      Приоритетный минимальный набор API для релиза 1.0 (порядок по приоритету):
+
+      1) Genome (core)
+          - Конструкторы: `Genome()` и `Genome(const char* filename)` или конструктор по `Parameters`+`GenomeInitStruct`.
+          - Ключевые методы: `BuildPhenotype(NeuralNetwork&)`, `BuildHyperNEATPhenotype(NeuralNetwork&, Substrate&)`, `GetFitness`/`SetFitness`, `Save`/`Load`, `Randomize_LinkWeights`, `Randomize_Traits`, основные `Mutate_*` (минимум: `Mutate_NeuronActivations_A/B`, `Mutate_NeuronActivation_Type`, `Mutate_NeuronTimeConstants`, `Mutate_NeuronBiases`).
+          - Поля/доступ: `NeuronGenes`, `LinkGenes` (как коллекции/итерируемые объекты).
+
+      2) NeuralNetwork (I/O + execution)
+          - Конструкторы: `NeuralNetwork()` и `NeuralNetwork(bool)`.
+          - Ключевые методы: `Input` (поддержка Python list и NumPy), `Activate` / `ActivateFast` / `ActivateLeaky`, `Output`, `Clear`, `Save`/`Load`.
+          - Helpers: `SetInputOutputDimentions`, `NumInputs`, `NumOutputs`.
+          - Поля: `m_neurons`, `m_connections` (как опциональные для инспекции).
+
+      3) Parameters (configuration + traits API)
+          - Методы: `Load`, `Save`, `Reset`.
+          - Критичные поля: базовые параметры генерации/мутаций (PopulationSize, MutateAddLinkProb, MutateWeightsProb и т.д.) и HyperNEAT/ES параметры (DivisionThreshold, MaxDepth, IterationLevel, CPPN_Bias, Width/Height, Leo*).
+          - Traits API: `ListNeuronTraitParameters`, `SetNeuronTraitParameters`, `GetNeuronTraitParameters` (и аналогично для Link/Genome) — экспортовать как удобные методы.
+
+      4) Substrate (HyperNEAT substrate)
+          - Конструктор: `Substrate(inputs, hidden, outputs)` (принимает координаты).
+          - Методы: `GetMinCPPNInputs`, `GetMinCPPNOutputs`, `PrintInfo`, `SetCustomConnectivity`, `ClearCustomConnectivity`.
+          - Параметры/флаги: разрешения связей (`m_allow_*`), `m_max_weight_and_bias`, координаты узлов.
+
+      5) RNG (utility)
+          - Методы: `Seed`, `TimeSeed`, `RandInt`, `RandFloat`, `RandFloatSigned`, `RandGaussSigned`, `Roulette`.
+
+      6) Дополнительно (низкий приоритет для 1.0, но полезно скоро):
+          - Population: `Epoch`, `Tick`, `GetBestGenome`, `AccessGenomeByIndex` (можно отложить в 1.1 при необходимости).
+          - Species: минимальный доступ к `Individuals` и `GetLeader`.
 
 - [ ] Документация и примеры
   - [ ] Перенесите и адаптируйте документацию из оригинального `README.md` и примеры.
