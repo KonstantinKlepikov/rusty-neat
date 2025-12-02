@@ -1,3 +1,10 @@
+// Tests for Population innovation database sharing.
+//
+// This test builds two identical minimal genomes and creates a `Population`
+// from them so they share a central innovation database. It then performs
+// `mutate_add_neuron_for` on both genomes: the second mutation should reuse
+// the neuron innovation (innovation id) created by the first mutation. The
+// assertions verify that both genomes received the same new neuron id.
 use rand::rngs::ThreadRng;
 use rusty_neat::*;
 

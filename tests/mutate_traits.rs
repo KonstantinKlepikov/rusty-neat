@@ -1,3 +1,11 @@
+// Tests for trait mutation and randomization.
+//
+// This test creates a minimal genome with a neuron, a link and a genome-level
+// gene, each carrying a trait `t1`. It then configures `Parameters` to force
+// mutation (mutation_prob = 1.0) and verifies that:
+//  - `mutate_neuron_traits`, `mutate_link_traits` and `mutate_genome_traits`
+//    report changes when run with a seeded RNG.
+//  - `randomize_traits` executes without panic and assigns proper types/ranges.
 mod common;
 use common::seeded_rng;
 use rusty_neat::genes::{ActivationFunction, Gene, LinkGene, NeuronGene, NeuronType, TraitValue};

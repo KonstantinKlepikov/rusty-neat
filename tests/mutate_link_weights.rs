@@ -1,3 +1,12 @@
+// Tests for randomization and mutation of link weights.
+//
+// This test constructs a minimal genome with one input and one output
+// neuron and a single link between them. It verifies two behaviours:
+// 1) `randomize_link_weights` produces a weight inside the configured
+//    [`min_weight`, `max_weight`] range.
+// 2) `mutate_link_weights` actually mutates the weight when mutation
+//    rates are set to deterministic values (here: mutate every link,
+//    perturbation mode), and returns `true` indicating a change.
 use rand::rngs::ThreadRng;
 use rusty_neat::*;
 

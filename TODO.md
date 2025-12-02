@@ -39,9 +39,9 @@
   - [ ] Рекомендуемые подпункты по приоритету:
     - [x] Substrate / HyperNEAT helpers — unit-тесты для `get_max_dims`, `get_min_cppn_inputs`, `get_min_cppn_outputs`, `with_coords`, `set_neurons`, `print_info`.
     - [x] BuildHyperNEATPhenotype — быстрый smoke-test: детерминированный CPPN/phenotype, проверка количества связей, фильтрации по флагам и масштабирования весов (`max_weight_and_bias`).
-    - [ ] Traits behaviour — unit-тесты для `init_trait_map` и `mutate_trait_map`: replace vs perturb, clamping, dep_key/dep_values, roulette для set/string.
-    - [ ] PhenotypeBehavior — тесты контрактов: `acquire()` (false по-умолчанию), `distance_to()` (0 для идентичных `m_data`), `successful()` (true по-умолчанию), сравнение `m_data`.
-    - [ ] Parameters ↔ Traits integration — небольшие интеграционные тесты: `SetNeuronTraitParameters`/`SetLinkTraitParameters` + `Genome::randomize_traits`.
+    - [x] Traits behaviour — unit-тесты для `init_trait_map` и `mutate_trait_map`: replace vs perturb, clamping, dep_key/dep_values, roulette для set/string.
+    - [x] PhenotypeBehavior — тесты контрактов: `acquire()` (false по-умолчанию), `distance_to()` (0 для идентичных `m_data`), `successful()` (true по-умолчанию), сравнение `m_data`.
+    - [x] Parameters ↔ Traits integration — небольшие интеграционные тесты: `SetNeuronTraitParameters`/`SetLinkTraitParameters` + `Genome::randomize_traits`.
     - [ ] ES-HyperNEAT (опционально) — smoke-тесты для ES-параметров (DivisionThreshold, IterationLevel, MaxDepth); эти тесты можно помечать `#[ignore]` или запускать отдельно.
     - [ ] Serialization / pickling (опционально) — round-trip тесты `Substrate` и простых `Genome`; pickling-совместимость с Python — отдельная интеграция.
     - [ ] CI policy — определить бюджет времени и пометить тяжёлые эволюционные примеры как `#[ignore]` или вынести в nightly/integration workflow.

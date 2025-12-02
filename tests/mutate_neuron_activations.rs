@@ -1,9 +1,19 @@
+// Tests for neuron activation parameter mutation functions.
+//
+// This file verifies three related behaviours:
+// 1) `mutate_neuron_activations_a` perturbs the `a` parameter of at least
+//    one hidden neuron when mutation is enabled and probabilities are set
+//    deterministically.
+// 2) `mutate_neuron_activations_b` perturbs the `b` parameter similarly.
+// 3) `mutate_neuron_activation_type` selects and applies a new activation
+//    function type for a neuron when the selection probabilities are set.
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rusty_neat::genes::{ActivationFunction, NeuronGene, NeuronType};
 use rusty_neat::genome::Genome;
 use rusty_neat::parameters::Parameters;
 
+// Test: mutation of activation A/B parameters and activation type selection
 #[test]
 fn test_mutate_neuron_activations_a_and_b_and_type() {
     let mut params = Parameters::default();

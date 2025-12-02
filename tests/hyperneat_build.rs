@@ -1,7 +1,13 @@
+// Tests for BuildHyperNEATPhenotype and related HyperNEAT helpers.
+// Each test constructs a small deterministic CPPN genome (via helpers)
+// and a `Substrate`, then builds the hyperneat phenotype and asserts
+// expected connectivity and parameter mapping (weights, bias, timeconstants).
 use rusty_neat::Substrate;
 mod common;
 use common::{assert_weight_approx, make_fixed_cppn};
 
+// Test: scaling of CPPN outputs to phenotype weights and handling of
+// `query_weights_only` vs full-output CPPNs (link_on + weight).
 #[test]
 fn build_hyperneat_phenotype_scaling_and_query_outputs() {
     // Simple substrate: one input coord, one output coord
@@ -29,6 +35,8 @@ fn build_hyperneat_phenotype_scaling_and_query_outputs() {
     }
 }
 
+// Test: when `leaky=true` the CPPN requires additional outputs (timeconst, bias)
+// and these are mapped into neuron parameters on the produced phenotype.
 #[test]
 fn build_hyperneat_leaky_requires_additional_outputs_and_sets_neuron_params() {
     // Simple substrate: 1 input, 1 output
@@ -68,6 +76,8 @@ fn build_hyperneat_leaky_requires_additional_outputs_and_sets_neuron_params() {
     assert_weight_approx(out_neuron.bias, expected_bias, 1e-6);
 }
 
+// Test: leaky + query_weights_only combination reduces CPPN outputs while
+// still producing correct weight/timeconst/bias mappings for the phenotype.
 #[test]
 fn build_hyperneat_leaky_query_weights_only_case() {
     // Substrate with leaky and query_weights_only = true

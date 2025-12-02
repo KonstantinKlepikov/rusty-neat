@@ -1,12 +1,13 @@
-#![allow(dead_code)]
-
 use rusty_neat::Genome;
+use rusty_neat::genes::TraitValue;
 use rusty_neat::genes::{ActivationFunction, LinkGene, NeuronGene, NeuronType};
+// small helper module for tests
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
 // Helper: approximate weight comparator with configurable tolerance
+#[allow(dead_code)]
 pub fn assert_weight_approx(actual: f64, expected: f64, tol: f64) {
     let d = (actual - expected).abs();
     assert!(
@@ -23,19 +24,13 @@ pub fn assert_weight_approx(actual: f64, expected: f64, tol: f64) {
 // It builds a small feed-forward CPPN where the bias input is connected to every
 // CPPN output with the provided weights. Outputs use Linear activation so that
 // output == bias * weight (bias input set to 1.0 in BuildHyperNEATPhenotype).
-/// Default seed constant for tests
-pub const DEFAULT_SEED: u64 = 42;
-
 /// Create a seeded StdRng for deterministic tests
+#[allow(dead_code)]
 pub fn seeded_rng(seed: u64) -> StdRng {
     StdRng::seed_from_u64(seed)
 }
 
-/// Create a StdRng with the default seed
-pub fn default_rng() -> StdRng {
-    seeded_rng(DEFAULT_SEED)
-}
-
+#[allow(dead_code)]
 pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f64]) -> Genome {
     assert!(cppn_outputs == out_weights.len());
     let mut g = Genome::default();
@@ -91,6 +86,55 @@ pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f
         let lg = LinkGene::new(bias_id, out_id, innov, w, false);
         g.link_genes.push(lg);
         innov += 1;
+    }
+
+    g
+}
+
+/// Create a small Genome populated with one hidden neuron, one link and
+/// an optional genome-level gene. The caller can supply lists of trait
+/// (name, value) pairs to set on neuron, link and genome_gene respectively.
+#[allow(dead_code)]
+pub fn make_simple_genome_with_traits(
+    neuron_traits: &[(&str, TraitValue)],
+    link_traits: &[(&str, TraitValue)],
+    genome_traits: &[(&str, TraitValue)],
+) -> Genome {
+    let mut g = Genome::default();
+    g.num_inputs = 1;
+    g.num_outputs = 1;
+
+    // neuron
+    let mut ng = NeuronGene::new(
+        2,
+        NeuronType::Hidden,
+        0,
+        0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        ActivationFunction::SignedSigmoid,
+    );
+    for (k, v) in neuron_traits {
+        ng.traits.insert(k.to_string(), v.clone());
+    }
+    g.neuron_genes.push(ng);
+
+    // link
+    let mut lg = LinkGene::new(1, 2, 1, 0.1, false);
+    for (k, v) in link_traits {
+        lg.traits.insert(k.to_string(), v.clone());
+    }
+    g.link_genes.push(lg);
+
+    if !genome_traits.is_empty() {
+        let mut gg = rusty_neat::genes::Gene::new();
+        for (k, v) in genome_traits {
+            gg.traits.insert(k.to_string(), v.clone());
+        }
+        g.genome_gene = Some(gg);
     }
 
     g
