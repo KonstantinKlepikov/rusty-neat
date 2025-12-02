@@ -20,3 +20,7 @@ wasm-pack.log
 cneat/
 research/*.*
 !research/.gitkeep
+
+#rust
+target/
+**/*.rs.bk

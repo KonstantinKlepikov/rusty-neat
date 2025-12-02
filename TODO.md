@@ -28,7 +28,7 @@
     - [x] `Mutate_AddNeuron`, `Mutate_AddLink`, `Mutate_RemoveLink`, `Mutate_RemoveSimpleNeuron`
     - [x] `Mutate_LinkWeights`, `Randomize_LinkWeights`
     - [x] `Mutate_NeuronActivations_A/B`, `Mutate_NeuronActivation_Type`
-    - [x] `Mutate_NeuronTimeConstants`, `Mutate_NeuronBiases`
+    - [x] `Mutate_NeuronTimeConstants`, `Mutate_NeurонBiases`
     - [x] `Mutate_NeuronTraits`, `Mutate_LinkTraits`, `Mutate_GenomeTraits`
     - [x] `Randomize_Traits`
   - [x] Реализуйте вспомогательные функции (генераторы случайных чисел, сериализацию).
@@ -50,6 +50,30 @@
   - [ ] Используйте `Cargo.toml` для управления зависимостями и сборкой.
   - [ ] Для поддержки Python добавьте PyO3 и настройте сборку через `maturin` или `wasm-pack`.
 
+    Этапы реализации биндингов на Python (подпункты)
+
+    - [x] Инвентаризация и согласование API
+      - [x] Собрать полный список экспортируемых типов и методов (см. `research/python_integration.md`).
+      - [x] Решить совместимость pickle/серриализации и ожидания NumPy I/O.
+    - [x] Skeleton crate
+      - [x] Создать `rusty_neat_py` с `Cargo.toml` и `src/lib.rs` (#[pymodule]).
+      - [x] Реализовать минимальные `PyGenome` и `PyNeuralNetwork` как скелетоны для контрактов и smoke-tests.
+    - [ ] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
+    - [ ] Thin wrappers против реальной реализации
+      - [ ] Подключить локальную зависимость на основной crate (`path = ".."`) и обернуть реальные типы (`Genome`, `NeuralNetwork`, `Parameters`, `Substrate`, `Rng`).
+      - [ ] Выбрать стратегию владения: `Arc<Mutex<T>>` или `Py<PyAny>`-совместимый подход (рекомендация: `Arc<RwLock<T>>`).
+    - [ ] NumPy и буферная совместимость
+      - [ ] Использовать `pyo3-ndarray` / `ndarray` для приёма и возврата `ndarray` в `NeuralNetwork::input/output`.
+      - [ ] Добавить быстрые пути для Python sequences и `numpy.ndarray`.
+    - [ ] Pickling и сериализация
+      - [ ] Реализовать `__getstate__/__setstate__` через serde (bincode) или вручную сериализовать важные поля.
+      - [ ] Документировать несовместимость с оригинальными C++ pickle-байтами (если она будет).
+    - [ ] Тесты и совместимость
+      - [ ] Pytest-совместимые smoke-тесты, использующие venv и собранный wheel (maturin develop).
+      - [ ] Тесты NumPy round-trip и pickling round-trip.
+    - [ ] CI и публикация
+      - [ ] Добавить GitHub Actions, которые собирают колёса через `maturin build` на целевых платформах и запускают pytest.
+
 - [ ] Документация и примеры
   - [ ] Перенесите и адаптируйте документацию из оригинального `README.md` и примеры.
   - [ ] Обновите `README.md` и `README_WEB.md` для Rust-версии.
@@ -57,8 +81,6 @@
 - [ ] Автоматизация и CI
   - [x] Настройте тестирование и сборку через GitHub Actions (см. примеры в `.github/workflows`).
   - [ ] Добавьте сборку для разных платформ и, при необходимости, публикацию бинарников/библиотек.
-
----
 
 **Рекомендуемый порядок переписывания:**
 
@@ -68,9 +90,3 @@
 4. Вспомогательные утилиты (рандомизация, сериализация)
 5. Публичный API и интеграция с внешними языками (Python, WASM)
 6. Документация и примеры
-
-**Советы:**
-
-- Используйте идиоматичный Rust: владение памятью, `Option`/`Result`, обработка ошибок.
-- Для сложных алгоритмов пишите интеграционные тесты, сверяясь с результатами C++.
-- Не пытайтесь сразу переписать всё — двигайтесь поэтапно, начиная с самого простого.
