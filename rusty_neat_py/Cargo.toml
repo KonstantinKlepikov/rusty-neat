@@ -2,7 +2,7 @@
 name = "rusty_neat_py"
 version = "0.1.0"
 edition = "2021"
-description = "Python bindings (skeleton) for rusty-neat (PyO3/maturin)"
+description = "Python bindings for rusty-neat (PyO3/maturin)"
 license = "MIT"
 
 [lib]
@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.18", features = ["extension-module"] }
+rusty_neat = { path = "../", package = "rusty-neat" }
 
 [package.metadata.maturin]
 sdist = true

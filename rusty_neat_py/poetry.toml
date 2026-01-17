@@ -1,0 +1,2 @@
+virtualenvs.create = true
+virtualenvs.prefer-active-python = true
