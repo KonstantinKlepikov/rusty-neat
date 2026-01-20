@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('rusty_neat_py/poetry.lock') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('rusty_neat_py/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -51,11 +51,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
 
-      - name: Install Python deps with Poetry
+      - name: Install Python deps with Poetry (no-root)
         working-directory: rusty_neat_py
         run: |
           poetry config virtualenvs.create true
-          poetry install --no-interaction --no-ansi
+          # install only dependencies, do not attempt to install the local package
+          poetry install --no-interaction --no-ansi --no-root
 
       - name: Build and install extension (maturin develop)
         working-directory: rusty_neat_py
