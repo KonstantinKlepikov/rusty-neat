@@ -56,7 +56,7 @@
 
       - [x] Собрать полный список экспортируемых типов и методов (см. `research/python_integration.md`).
       - [x] Решить совместимость pickle/серриализации и ожидания NumPy I/O.
-      - [ ] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
+      - [x] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
 
     - Фаза 1 — Дизайн API
 
@@ -68,9 +68,9 @@
 
       - [x] Создать `rusty_neat_py` с `Cargo.toml` и `src/lib.rs` (#[pymodule]).
       - [x] Реализовать минимальные `PyGenome` и `PyNeuralNetwork` как скелетоны для контрактов и smoke-tests.
-      - [ ] Создать crate в workspace с `crate-type = ["cdylib"]`, добавить зависимости `pyo3`, `pyo3-ndarray`, `ndarray`, и локальную зависимость `rusty_neat`.
-      - [ ] Добавить `#[pymodule]` и регистрации базовых классов (`PyGenome`, `PyNeuralNetwork`, `PyParameters`, `PySubstrate`, `PyRNG`) с минимальными конструкторами/методами.
-      - [ ] Добавить пример `maturin develop` запуск в README и basic smoke example на Python.
+      - [x] Создать crate в workspace с `crate-type = ["cdylib"]`, добавить зависимости `pyo3`, `pyo3-ndarray`, `ndarray`, и локальную зависимость `rusty_neat`.
+      - [x] Добавить `#[pymodule]` и регистрации базовых классов (`PyGenome`, `PyNeuralNetwork`, `PyParameters`, `PySubstrate`, `PyRNG`) с минимальными конструкторами/методами.
+      - [x] Добавить пример `maturin develop` запуск в README и basic smoke example на Python.
 
     - Фаза 3 — Ядро биндингов
 

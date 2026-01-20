@@ -12,6 +12,8 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.18", features = ["extension-module"] }
 rusty_neat = { path = "../", package = "rusty-neat" }
+numpy = "0.18"
+ndarray = "0.15"
 
 [package.metadata.maturin]
 sdist = true
