@@ -60,9 +60,9 @@
 
     - Фаза 1 — Дизайн API
 
-      - [ ] Решить контракты владения/потоков: `Arc<Mutex<T>>` vs `PyRef` для каждого экспортируемого класса.
-      - [ ] Спроектировать Python‑уровень: какие поля делать свойствами, какие методы — напрямую, какие пакеты — упаковывать в маленькие Py‑классы (LinkGene/NeuronGene).
-      - [ ] Документировать соглашения по Pickle/Сериализации (совместимость C++ → Rust — опционально).
+      - [x] Решить контракты владения/потоков: `Arc<Mutex<T>>` vs `PyRef` для каждого экспортируемого класса.
+      - [x] Спроектировать Python‑уровень: какие поля делать свойствами, какие методы — напрямую, какие пакеты — упаковывать в маленькие Py‑классы (LinkGene/NeuronGene).
+      - [x] Документировать соглашения по Pickle/Сериализации (совместимость C++ → Rust — опционально).
 
     - Фаза 2 — Создание skeleton crate `rusty_neat_py`
 
@@ -74,7 +74,7 @@
 
     - Фаза 3 — Ядро биндингов
 
-      - [ ] Реализовать `PyNeuralNetwork` с поддержкой `Input` из Python list и `PyArray` (через `pyo3-ndarray`), `Activate`, `Output` и сохранение/загрузку.
+      - [x] Реализовать `PyNeuralNetwork` с поддержкой `Input` из Python list и `PyArray` (через `pyo3-ndarray`), `Activate`, `Output` и сохранение/загрузку.
       - [ ] Реализовать `PyGenome` с `BuildPhenotype` и `BuildHyperNEATPhenotype` (принятие `PySubstrate`).
       - [ ] Экспортировать ключевые структуры: `LinkGene`, `NeuronGene`, `GenomeInitStruct` (как простые `pyclass`/namedtuple).
       - [ ] Реализовать минимальные маппинги контейнеров (vec ↔ list) и provide light iterators for large lists.
