@@ -75,9 +75,9 @@
     - Фаза 3 — Ядро биндингов
 
       - [x] Реализовать `PyNeuralNetwork` с поддержкой `Input` из Python list и `PyArray` (через `pyo3-ndarray`), `Activate`, `Output` и сохранение/загрузку.
-      - [ ] Реализовать `PyGenome` с `BuildPhenotype` и `BuildHyperNEATPhenotype` (принятие `PySubstrate`).
-      - [ ] Экспортировать ключевые структуры: `LinkGene`, `NeuronGene`, `GenomeInitStruct` (как простые `pyclass`/namedtuple).
-      - [ ] Реализовать минимальные маппинги контейнеров (vec ↔ list) и provide light iterators for large lists.
+      - [x] Реализовать `PyGenome` с `BuildPhenotype` и `BuildHyperNEATPhenotype` (принятие `PySubstrate`).
+      - [x] Экспортировать ключевые структуры: `LinkGene`, `NeuronGene`, `GenomeInitStruct` (как простые `pyclass`/namedtuple).
+      - [x] Реализовать минимальные маппинги контейнеров (vec ↔ list) и provide light iterators for large lists.
 
     - Фаза 4 — Traits / Parameters / Substrate
 
