@@ -82,8 +82,8 @@
     - Фаза 4 — Traits / Parameters / Substrate
 
       - [x] Экспортировать `Parameters` с API trait management: `ListNeuronTraitParameters`, `SetNeuronTraitParameters`, `GetNeuronTraitParameters` и т.д.
-      - [ ] Реализовать `PySubstrate` с флагами (allow_input_output_links ...) и методами `GetMinCPPNInputs/GetMinCPPNOutputs`.
-      - [ ] Pickling для `Parameters`/`Substrate` (implement `__getstate__/__setstate__`).
+      - [x] Реализовать `PySubstrate` с флагами (allow_input_output_links ...) и методами `GetMinCPPNInputs/GetMinCPPNOutputs`.
+      - [x] Pickling для `Parameters`/`Substrate` (implement `__getstate__/__setstate__`).
 
     - Фаза 5 — Population / Species / PhenotypeBehavior
 

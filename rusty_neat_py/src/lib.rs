@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 /// Thin PyO3 wrapper for `rusty_neat::Genome`
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyGenome {
     inner: Arc<RwLock<rusty_neat::Genome>>,
 }
@@ -168,7 +168,7 @@ impl PyGenome {
 }
 
 /// Iterator over neuron_genes in a Genome (lightweight, reads one-by-one)
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyNeuronIterator {
     genome: Arc<RwLock<rusty_neat::Genome>>,
     idx: usize,
@@ -220,7 +220,7 @@ impl PyNeuronIterator {
 }
 
 /// Iterator over link_genes in a Genome
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyLinkIterator {
     genome: Arc<RwLock<rusty_neat::Genome>>,
     idx: usize,
@@ -266,7 +266,7 @@ impl PyLinkIterator {
 }
 
 /// Thin PyO3 wrapper for `rusty_neat::NeuralNetwork`
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyNeuralNetwork {
     inner: Arc<RwLock<rusty_neat::NeuralNetwork>>,
 }
@@ -483,13 +483,13 @@ impl PyNeuralNetwork {
 }
 
 /// Thin PyO3 wrapper for `rusty_neat::Parameters`
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyParameters {
     inner: Arc<RwLock<rusty_neat::Parameters>>,
 }
 
 /// Lightweight export of LinkGene for Python (namedtuple-like)
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyLinkGene {
     #[pyo3(get, set)]
     pub from_neuron_id: u64,
@@ -529,7 +529,7 @@ impl PyLinkGene {
 }
 
 /// Lightweight export of NeuronGene for Python (namedtuple-like)
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyNeuronGene {
     #[pyo3(get, set)]
     pub id: u64,
@@ -586,7 +586,7 @@ impl PyNeuronGene {
 }
 
 /// Lightweight export of GenomeInitStruct for Python
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyGenomeInitStruct {
     #[pyo3(get, set)]
     pub num_inputs: usize,
@@ -767,10 +767,324 @@ impl PyParameters {
         p.genome_trait_parameters.insert(name.to_string(), tp);
         Ok(())
     }
+
+    /// Support pickling: return a Python dict with all parameters
+    fn __getstate__(&self, py: Python) -> PyObject {
+        let p = match self.inner.read() {
+            Ok(v) => v,
+            Err(_) => panic!("lock poisoned"),
+        };
+        let d = PyDict::new(py);
+        // primitives
+        let _ = d.set_item("min_weight", p.min_weight);
+        let _ = d.set_item("max_weight", p.max_weight);
+        let _ = d.set_item("split_recurrent", p.split_recurrent);
+        let _ = d.set_item("dont_use_bias_neuron", p.dont_use_bias_neuron);
+
+        // probabilities
+        let _ = d.set_item(
+            "mutate_add_link_from_bias_prob",
+            p.mutate_add_link_from_bias_prob,
+        );
+        let _ = d.set_item("recurrent_prob", p.recurrent_prob);
+        let _ = d.set_item("recurrent_loop_prob", p.recurrent_loop_prob);
+        let _ = d.set_item("mutate_neuron_traits_prob", p.mutate_neuron_traits_prob);
+        let _ = d.set_item("mutate_link_traits_prob", p.mutate_link_traits_prob);
+        let _ = d.set_item("mutate_genome_traits_prob", p.mutate_genome_traits_prob);
+
+        // weight mutation
+        let _ = d.set_item("mutate_weights_severe_prob", p.mutate_weights_severe_prob);
+        let _ = d.set_item("weight_mutation_rate", p.weight_mutation_rate);
+        let _ = d.set_item("weight_replacement_rate", p.weight_replacement_rate);
+        let _ = d.set_item("weight_mutation_max_power", p.weight_mutation_max_power);
+        let _ = d.set_item(
+            "weight_replacement_max_power",
+            p.weight_replacement_max_power,
+        );
+
+        // neuron activation mutations
+        let _ = d.set_item(
+            "activation_a_mutation_max_power",
+            p.activation_a_mutation_max_power,
+        );
+        let _ = d.set_item("min_activation_a", p.min_activation_a);
+        let _ = d.set_item("max_activation_a", p.max_activation_a);
+        let _ = d.set_item(
+            "activation_b_mutation_max_power",
+            p.activation_b_mutation_max_power,
+        );
+        let _ = d.set_item("min_activation_b", p.min_activation_b);
+        let _ = d.set_item("max_activation_b", p.max_activation_b);
+
+        // time-constant and bias
+        let _ = d.set_item(
+            "timeconstant_mutation_max_power",
+            p.timeconstant_mutation_max_power,
+        );
+        let _ = d.set_item("min_neuron_time_constant", p.min_neuron_time_constant);
+        let _ = d.set_item("max_neuron_time_constant", p.max_neuron_time_constant);
+        let _ = d.set_item("bias_mutation_max_power", p.bias_mutation_max_power);
+        let _ = d.set_item("min_neuron_bias", p.min_neuron_bias);
+        let _ = d.set_item("max_neuron_bias", p.max_neuron_bias);
+
+        // activation function probs
+        let _ = d.set_item(
+            "activation_function_probs",
+            p.activation_function_probs.clone(),
+        );
+
+        // trait maps: convert each entry to a dict via helper
+        let neuron_tp = PyDict::new(py);
+        for (k, v) in &p.neuron_trait_parameters {
+            let _ = neuron_tp.set_item(k, trait_parameters_to_pydict(py, v));
+        }
+        let _ = d.set_item("neuron_trait_parameters", neuron_tp);
+
+        let link_tp = PyDict::new(py);
+        for (k, v) in &p.link_trait_parameters {
+            let _ = link_tp.set_item(k, trait_parameters_to_pydict(py, v));
+        }
+        let _ = d.set_item("link_trait_parameters", link_tp);
+
+        let genome_tp = PyDict::new(py);
+        for (k, v) in &p.genome_trait_parameters {
+            let _ = genome_tp.set_item(k, trait_parameters_to_pydict(py, v));
+        }
+        let _ = d.set_item("genome_trait_parameters", genome_tp);
+
+        d.to_object(py)
+    }
+
+    /// Support unpickling from dict produced by __getstate__
+    fn __setstate__(&mut self, state: &PyAny) -> PyResult<()> {
+        let d = state
+            .downcast::<PyDict>()
+            .map_err(|_| PyRuntimeError::new_err("__setstate__ expects a dict"))?;
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+
+        // Manually assign known fields (explicit to avoid mistakes)
+        if let Some(v) = d.get_item("min_weight") {
+            p.min_weight = v
+                .extract::<f64>()
+                .map_err(|e| PyRuntimeError::new_err(format!("min_weight must be float: {}", e)))?;
+        }
+        if let Some(v) = d.get_item("max_weight") {
+            p.max_weight = v
+                .extract::<f64>()
+                .map_err(|e| PyRuntimeError::new_err(format!("max_weight must be float: {}", e)))?;
+        }
+        if let Some(v) = d.get_item("split_recurrent") {
+            p.split_recurrent = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("split_recurrent must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("dont_use_bias_neuron") {
+            p.dont_use_bias_neuron = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("dont_use_bias_neuron must be bool: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("mutate_add_link_from_bias_prob") {
+            p.mutate_add_link_from_bias_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "mutate_add_link_from_bias_prob must be float: {}",
+                    e
+                ))
+            })?;
+        }
+        if let Some(v) = d.get_item("recurrent_prob") {
+            p.recurrent_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("recurrent_prob must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("recurrent_loop_prob") {
+            p.recurrent_loop_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("recurrent_loop_prob must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("mutate_neuron_traits_prob") {
+            p.mutate_neuron_traits_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("mutate_neuron_traits_prob must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("mutate_link_traits_prob") {
+            p.mutate_link_traits_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("mutate_link_traits_prob must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("mutate_genome_traits_prob") {
+            p.mutate_genome_traits_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("mutate_genome_traits_prob must be float: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("mutate_weights_severe_prob") {
+            p.mutate_weights_severe_prob = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("mutate_weights_severe_prob must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("weight_mutation_rate") {
+            p.weight_mutation_rate = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("weight_mutation_rate must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("weight_replacement_rate") {
+            p.weight_replacement_rate = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("weight_replacement_rate must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("weight_mutation_max_power") {
+            p.weight_mutation_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("weight_mutation_max_power must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("weight_replacement_max_power") {
+            p.weight_replacement_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "weight_replacement_max_power must be float: {}",
+                    e
+                ))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("activation_a_mutation_max_power") {
+            p.activation_a_mutation_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "activation_a_mutation_max_power must be float: {}",
+                    e
+                ))
+            })?;
+        }
+        if let Some(v) = d.get_item("min_activation_a") {
+            p.min_activation_a = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("min_activation_a must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_activation_a") {
+            p.max_activation_a = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_activation_a must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("activation_b_mutation_max_power") {
+            p.activation_b_mutation_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "activation_b_mutation_max_power must be float: {}",
+                    e
+                ))
+            })?;
+        }
+        if let Some(v) = d.get_item("min_activation_b") {
+            p.min_activation_b = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("min_activation_b must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_activation_b") {
+            p.max_activation_b = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_activation_b must be float: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("timeconstant_mutation_max_power") {
+            p.timeconstant_mutation_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "timeconstant_mutation_max_power must be float: {}",
+                    e
+                ))
+            })?;
+        }
+        if let Some(v) = d.get_item("min_neuron_time_constant") {
+            p.min_neuron_time_constant = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("min_neuron_time_constant must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_neuron_time_constant") {
+            p.max_neuron_time_constant = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_neuron_time_constant must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("bias_mutation_max_power") {
+            p.bias_mutation_max_power = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("bias_mutation_max_power must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("min_neuron_bias") {
+            p.min_neuron_bias = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("min_neuron_bias must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_neuron_bias") {
+            p.max_neuron_bias = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_neuron_bias must be float: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("activation_function_probs") {
+            p.activation_function_probs = v.extract::<Vec<f64>>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "activation_function_probs must be list of floats: {}",
+                    e
+                ))
+            })?;
+        }
+
+        // trait maps
+        p.neuron_trait_parameters.clear();
+        if let Some(v) = d.get_item("neuron_trait_parameters") {
+            if !v.is_none() {
+                let tp_dict = v.downcast::<PyDict>().map_err(|_| {
+                    PyRuntimeError::new_err("neuron_trait_parameters must be a dict")
+                })?;
+                for (k, val) in tp_dict.iter() {
+                    let key = k
+                        .extract::<String>()
+                        .map_err(|_| PyRuntimeError::new_err("trait map keys must be strings"))?;
+                    let tp = pydict_to_trait_parameters(val)?;
+                    p.neuron_trait_parameters.insert(key, tp);
+                }
+            }
+        }
+
+        p.link_trait_parameters.clear();
+        if let Some(v) = d.get_item("link_trait_parameters") {
+            if !v.is_none() {
+                let tp_dict = v
+                    .downcast::<PyDict>()
+                    .map_err(|_| PyRuntimeError::new_err("link_trait_parameters must be a dict"))?;
+                for (k, val) in tp_dict.iter() {
+                    let key = k
+                        .extract::<String>()
+                        .map_err(|_| PyRuntimeError::new_err("trait map keys must be strings"))?;
+                    let tp = pydict_to_trait_parameters(val)?;
+                    p.link_trait_parameters.insert(key, tp);
+                }
+            }
+        }
+
+        p.genome_trait_parameters.clear();
+        if let Some(v) = d.get_item("genome_trait_parameters") {
+            if !v.is_none() {
+                let tp_dict = v.downcast::<PyDict>().map_err(|_| {
+                    PyRuntimeError::new_err("genome_trait_parameters must be a dict")
+                })?;
+                for (k, val) in tp_dict.iter() {
+                    let key = k
+                        .extract::<String>()
+                        .map_err(|_| PyRuntimeError::new_err("trait map keys must be strings"))?;
+                    let tp = pydict_to_trait_parameters(val)?;
+                    p.genome_trait_parameters.insert(key, tp);
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Thin PyO3 wrapper for `rusty_neat::Substrate`
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PySubstrate {
     inner: Arc<RwLock<rusty_neat::Substrate>>,
 }
@@ -840,6 +1154,312 @@ impl PySubstrate {
         Ok(())
     }
 
+    // -- Flags and properties accessors
+    fn get_leaky(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.leaky)
+    }
+
+    fn set_leaky(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.leaky = v;
+        Ok(())
+    }
+
+    fn get_with_distance(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.with_distance)
+    }
+
+    fn set_with_distance(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.with_distance = v;
+        Ok(())
+    }
+
+    fn get_min_time_const(&self) -> PyResult<f64> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.min_time_const)
+    }
+
+    fn set_min_time_const(&mut self, v: f64) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.min_time_const = v;
+        Ok(())
+    }
+
+    fn get_max_time_const(&self) -> PyResult<f64> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.max_time_const)
+    }
+
+    fn set_max_time_const(&mut self, v: f64) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.max_time_const = v;
+        Ok(())
+    }
+
+    fn get_max_weight_and_bias(&self) -> PyResult<f64> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.max_weight_and_bias)
+    }
+
+    fn set_max_weight_and_bias(&mut self, v: f64) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.max_weight_and_bias = v;
+        Ok(())
+    }
+
+    // Activation function accessors as string names
+    fn get_output_nodes_activation(&self) -> PyResult<String> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(format!("{:?}", s.output_nodes_activation))
+    }
+
+    fn set_output_nodes_activation(&mut self, name: &str) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.output_nodes_activation = match name {
+            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+            _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+        };
+        Ok(())
+    }
+
+    fn get_hidden_nodes_activation(&self) -> PyResult<String> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(format!("{:?}", s.hidden_nodes_activation))
+    }
+
+    fn set_hidden_nodes_activation(&mut self, name: &str) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.hidden_nodes_activation = match name {
+            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+            _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+        };
+        Ok(())
+    }
+
+    fn get_custom_conn_obeys_flags(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.custom_conn_obeys_flags)
+    }
+
+    fn set_custom_conn_obeys_flags(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.custom_conn_obeys_flags = v;
+        Ok(())
+    }
+
+    // Connectivity flags
+    fn get_allow_input_hidden_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_input_hidden_links)
+    }
+
+    fn set_allow_input_hidden_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_input_hidden_links = v;
+        Ok(())
+    }
+
+    fn get_allow_input_output_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_input_output_links)
+    }
+
+    fn set_allow_input_output_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_input_output_links = v;
+        Ok(())
+    }
+
+    fn get_allow_hidden_hidden_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_hidden_hidden_links)
+    }
+
+    fn set_allow_hidden_hidden_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_hidden_hidden_links = v;
+        Ok(())
+    }
+
+    fn get_allow_hidden_output_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_hidden_output_links)
+    }
+
+    fn set_allow_hidden_output_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_hidden_output_links = v;
+        Ok(())
+    }
+
+    fn get_allow_output_hidden_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_output_hidden_links)
+    }
+
+    fn set_allow_output_hidden_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_output_hidden_links = v;
+        Ok(())
+    }
+
+    fn get_allow_output_output_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_output_output_links)
+    }
+
+    fn set_allow_output_output_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_output_output_links = v;
+        Ok(())
+    }
+
+    fn get_allow_looped_hidden_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_looped_hidden_links)
+    }
+
+    fn set_allow_looped_hidden_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_looped_hidden_links = v;
+        Ok(())
+    }
+
+    fn get_allow_looped_output_links(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.allow_looped_output_links)
+    }
+
+    fn set_allow_looped_output_links(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.allow_looped_output_links = v;
+        Ok(())
+    }
+
+    fn get_query_weights_only(&self) -> PyResult<bool> {
+        let s = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(s.query_weights_only)
+    }
+
+    fn set_query_weights_only(&mut self, v: bool) -> PyResult<()> {
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        s.query_weights_only = v;
+        Ok(())
+    }
+
     fn set_neurons(
         &mut self,
         inputs: Vec<Vec<f64>>,
@@ -871,10 +1491,200 @@ impl PySubstrate {
         s.set_custom_connectivity(conns);
         Ok(())
     }
+
+    /// Support pickling for Substrate: produce a dict with all relevant fields
+    fn __getstate__(&self, py: Python) -> PyObject {
+        let s = match self.inner.read() {
+            Ok(v) => v,
+            Err(_) => panic!("lock poisoned"),
+        };
+        let d = PyDict::new(py);
+        let _ = d.set_item("input_coords", s.input_coords.clone());
+        let _ = d.set_item("hidden_coords", s.hidden_coords.clone());
+        let _ = d.set_item("output_coords", s.output_coords.clone());
+
+        let _ = d.set_item("leaky", s.leaky);
+        let _ = d.set_item("with_distance", s.with_distance);
+
+        let _ = d.set_item("min_time_const", s.min_time_const);
+        let _ = d.set_item("max_time_const", s.max_time_const);
+        let _ = d.set_item("max_weight_and_bias", s.max_weight_and_bias);
+
+        let _ = d.set_item(
+            "output_nodes_activation",
+            format!("{:?}", s.output_nodes_activation),
+        );
+        let _ = d.set_item(
+            "hidden_nodes_activation",
+            format!("{:?}", s.hidden_nodes_activation),
+        );
+
+        let _ = d.set_item("custom_connectivity", s.custom_connectivity.clone());
+        let _ = d.set_item("custom_conn_obeys_flags", s.custom_conn_obeys_flags);
+
+        // connectivity flags
+        let _ = d.set_item("allow_input_hidden_links", s.allow_input_hidden_links);
+        let _ = d.set_item("allow_input_output_links", s.allow_input_output_links);
+        let _ = d.set_item("allow_hidden_hidden_links", s.allow_hidden_hidden_links);
+        let _ = d.set_item("allow_hidden_output_links", s.allow_hidden_output_links);
+        let _ = d.set_item("allow_output_hidden_links", s.allow_output_hidden_links);
+        let _ = d.set_item("allow_output_output_links", s.allow_output_output_links);
+        let _ = d.set_item("allow_looped_hidden_links", s.allow_looped_hidden_links);
+        let _ = d.set_item("allow_looped_output_links", s.allow_looped_output_links);
+
+        let _ = d.set_item("query_weights_only", s.query_weights_only);
+
+        d.to_object(py)
+    }
+
+    /// Restore Substrate from dict produced by __getstate__
+    fn __setstate__(&mut self, state: &PyAny) -> PyResult<()> {
+        let d = state
+            .downcast::<PyDict>()
+            .map_err(|_| PyRuntimeError::new_err("__setstate__ expects a dict"))?;
+        let mut s = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+
+        if let Some(v) = d.get_item("input_coords") {
+            s.input_coords = v.extract::<Vec<Vec<f64>>>().map_err(|e| {
+                PyRuntimeError::new_err(format!("input_coords must be nested float lists: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("hidden_coords") {
+            s.hidden_coords = v.extract::<Vec<Vec<f64>>>().map_err(|e| {
+                PyRuntimeError::new_err(format!("hidden_coords must be nested float lists: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("output_coords") {
+            s.output_coords = v.extract::<Vec<Vec<f64>>>().map_err(|e| {
+                PyRuntimeError::new_err(format!("output_coords must be nested float lists: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("leaky") {
+            s.leaky = v
+                .extract::<bool>()
+                .map_err(|e| PyRuntimeError::new_err(format!("leaky must be bool: {}", e)))?;
+        }
+        if let Some(v) = d.get_item("with_distance") {
+            s.with_distance = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("with_distance must be bool: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("min_time_const") {
+            s.min_time_const = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("min_time_const must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_time_const") {
+            s.max_time_const = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_time_const must be float: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("max_weight_and_bias") {
+            s.max_weight_and_bias = v.extract::<f64>().map_err(|e| {
+                PyRuntimeError::new_err(format!("max_weight_and_bias must be float: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("output_nodes_activation") {
+            let name = v.extract::<String>().map_err(|e| {
+                PyRuntimeError::new_err(format!("output_nodes_activation must be string: {}", e))
+            })?;
+            s.output_nodes_activation = match name.as_str() {
+                "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+                "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+                "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+                "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+                "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+                _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+            };
+        }
+
+        if let Some(v) = d.get_item("hidden_nodes_activation") {
+            let name = v.extract::<String>().map_err(|e| {
+                PyRuntimeError::new_err(format!("hidden_nodes_activation must be string: {}", e))
+            })?;
+            s.hidden_nodes_activation = match name.as_str() {
+                "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+                "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+                "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+                "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+                "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+                _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+            };
+        }
+
+        if let Some(v) = d.get_item("custom_connectivity") {
+            s.custom_connectivity = v.extract::<Vec<Vec<i32>>>().map_err(|e| {
+                PyRuntimeError::new_err(format!(
+                    "custom_connectivity must be nested int lists: {}",
+                    e
+                ))
+            })?;
+        }
+        if let Some(v) = d.get_item("custom_conn_obeys_flags") {
+            s.custom_conn_obeys_flags = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("custom_conn_obeys_flags must be bool: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("allow_input_hidden_links") {
+            s.allow_input_hidden_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_input_hidden_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_input_output_links") {
+            s.allow_input_output_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_input_output_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_hidden_hidden_links") {
+            s.allow_hidden_hidden_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_hidden_hidden_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_hidden_output_links") {
+            s.allow_hidden_output_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_hidden_output_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_output_hidden_links") {
+            s.allow_output_hidden_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_output_hidden_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_output_output_links") {
+            s.allow_output_output_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_output_output_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_looped_hidden_links") {
+            s.allow_looped_hidden_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_looped_hidden_links must be bool: {}", e))
+            })?;
+        }
+        if let Some(v) = d.get_item("allow_looped_output_links") {
+            s.allow_looped_output_links = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("allow_looped_output_links must be bool: {}", e))
+            })?;
+        }
+
+        if let Some(v) = d.get_item("query_weights_only") {
+            s.query_weights_only = v.extract::<bool>().map_err(|e| {
+                PyRuntimeError::new_err(format!("query_weights_only must be bool: {}", e))
+            })?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Thin PyO3 wrapper for random utilities (rusty_neat::random::Random)
-#[pyclass]
+#[pyclass(module = "rusty_neat_py")]
 pub struct PyRNG;
 
 #[pymethods]
