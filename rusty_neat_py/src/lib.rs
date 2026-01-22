@@ -1,7 +1,7 @@
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
-use pyo3::types::PyList;
+use pyo3::types::{PyDict, PyList};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
@@ -672,6 +672,101 @@ impl PyParameters {
         *p = rusty_neat::Parameters::default();
         Ok(())
     }
+
+    /// List neuron trait parameter names
+    fn list_neuron_trait_parameters(&self) -> PyResult<Vec<String>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.neuron_trait_parameters.keys().cloned().collect())
+    }
+
+    /// Get neuron trait parameters by name. Returns None if not present.
+    fn get_neuron_trait_parameters(&self, py: Python, name: &str) -> PyResult<Option<PyObject>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(tp) = p.neuron_trait_parameters.get(name) {
+            Ok(Some(trait_parameters_to_pydict(py, tp)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Set neuron trait parameters from a Python dict following the documented schema.
+    fn set_neuron_trait_parameters(&mut self, name: &str, params: &PyAny) -> PyResult<()> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let tp = pydict_to_trait_parameters(params)?;
+        p.neuron_trait_parameters.insert(name.to_string(), tp);
+        Ok(())
+    }
+
+    /// List link trait parameter names
+    fn list_link_trait_parameters(&self) -> PyResult<Vec<String>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.link_trait_parameters.keys().cloned().collect())
+    }
+
+    fn get_link_trait_parameters(&self, py: Python, name: &str) -> PyResult<Option<PyObject>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(tp) = p.link_trait_parameters.get(name) {
+            Ok(Some(trait_parameters_to_pydict(py, tp)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn set_link_trait_parameters(&mut self, name: &str, params: &PyAny) -> PyResult<()> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let tp = pydict_to_trait_parameters(params)?;
+        p.link_trait_parameters.insert(name.to_string(), tp);
+        Ok(())
+    }
+
+    /// List genome trait parameter names
+    fn list_genome_trait_parameters(&self) -> PyResult<Vec<String>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genome_trait_parameters.keys().cloned().collect())
+    }
+
+    fn get_genome_trait_parameters(&self, py: Python, name: &str) -> PyResult<Option<PyObject>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(tp) = p.genome_trait_parameters.get(name) {
+            Ok(Some(trait_parameters_to_pydict(py, tp)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn set_genome_trait_parameters(&mut self, name: &str, params: &PyAny) -> PyResult<()> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let tp = pydict_to_trait_parameters(params)?;
+        p.genome_trait_parameters.insert(name.to_string(), tp);
+        Ok(())
+    }
 }
 
 /// Thin PyO3 wrapper for `rusty_neat::Substrate`
@@ -796,6 +891,330 @@ impl PyRNG {
     fn rand_int(&self, max: u64) -> PyResult<u64> {
         Ok(rusty_neat::random::Random::rand_int(max))
     }
+}
+
+// Helper: convert Rust TraitParameters -> Python dict
+fn trait_parameters_to_pydict(py: Python, tp: &rusty_neat::genes::TraitParameters) -> PyObject {
+    let dict = PyDict::new(py);
+    let _ = dict.set_item("importance_coeff", tp.importance_coeff);
+    let _ = dict.set_item("mutation_prob", tp.mutation_prob);
+
+    // dep_key (optional)
+    if let Some(k) = &tp.dep_key {
+        let _ = dict.set_item("dep_key", k);
+    } else {
+        let _ = dict.set_item("dep_key", py.None());
+    }
+
+    // dep_values: list
+    let dv_list = PyList::empty(py);
+    for dv in &tp.dep_values {
+        match dv {
+            rusty_neat::genes::TraitValue::Int(i) => {
+                dv_list.append(i).ok();
+            }
+            rusty_neat::genes::TraitValue::Float(f) => {
+                dv_list.append(f).ok();
+            }
+            rusty_neat::genes::TraitValue::Str(s) => {
+                dv_list.append(s).ok();
+            }
+            rusty_neat::genes::TraitValue::Bool(b) => {
+                dv_list.append(b).ok();
+            }
+        }
+    }
+    let _ = dict.set_item("dep_values", dv_list);
+
+    // detail
+    let detail = PyDict::new(py);
+    match &tp.detail {
+        rusty_neat::genes::TraitDetail::Int {
+            min,
+            max,
+            mut_power,
+            mut_replace_prob,
+        } => {
+            let _ = detail.set_item("type", "Int");
+            let _ = detail.set_item("min", *min);
+            let _ = detail.set_item("max", *max);
+            let _ = detail.set_item("mut_power", *mut_power);
+            let _ = detail.set_item("mut_replace_prob", *mut_replace_prob);
+        }
+        rusty_neat::genes::TraitDetail::Float {
+            min,
+            max,
+            mut_power,
+            mut_replace_prob,
+        } => {
+            let _ = detail.set_item("type", "Float");
+            let _ = detail.set_item("min", *min);
+            let _ = detail.set_item("max", *max);
+            let _ = detail.set_item("mut_power", *mut_power);
+            let _ = detail.set_item("mut_replace_prob", *mut_replace_prob);
+        }
+        rusty_neat::genes::TraitDetail::Str { set, probs } => {
+            let _ = detail.set_item("type", "Str");
+            let _ = detail.set_item("set", set.clone());
+            let _ = detail.set_item("probs", probs.clone());
+        }
+        rusty_neat::genes::TraitDetail::IntSet { set, probs } => {
+            let _ = detail.set_item("type", "IntSet");
+            let _ = detail.set_item("set", set.clone());
+            let _ = detail.set_item("probs", probs.clone());
+        }
+        rusty_neat::genes::TraitDetail::FloatSet { set, probs } => {
+            let _ = detail.set_item("type", "FloatSet");
+            let _ = detail.set_item("set", set.clone());
+            let _ = detail.set_item("probs", probs.clone());
+        }
+    }
+    let _ = dict.set_item("detail", detail);
+
+    dict.to_object(py)
+}
+
+// Helper: convert Python dict -> Rust TraitParameters
+fn pydict_to_trait_parameters(params: &PyAny) -> PyResult<rusty_neat::genes::TraitParameters> {
+    let d = params
+        .downcast::<PyDict>()
+        .map_err(|_| PyRuntimeError::new_err("expected dict for TraitParameters"))?;
+
+    let importance_coeff: f64 = match d.get_item("importance_coeff") {
+        Some(v) => v.extract::<f64>().map_err(|e| {
+            PyRuntimeError::new_err(format!("importance_coeff must be float: {}", e))
+        })?,
+        None => 1.0,
+    };
+    let mutation_prob: f64 = match d.get_item("mutation_prob") {
+        Some(v) => v
+            .extract::<f64>()
+            .map_err(|e| PyRuntimeError::new_err(format!("mutation_prob must be float: {}", e)))?,
+        None => 0.0,
+    };
+
+    // dep_key
+    let dep_key: Option<String> = match d.get_item("dep_key") {
+        Some(v) => {
+            if v.is_none() {
+                None
+            } else {
+                Some(v.extract::<String>().map_err(|e| {
+                    PyRuntimeError::new_err(format!("dep_key must be string: {}", e))
+                })?)
+            }
+        }
+        None => None,
+    };
+
+    // dep_values
+    let mut dep_values: Vec<rusty_neat::genes::TraitValue> = Vec::new();
+    if let Some(v) = d.get_item("dep_values") {
+        if !v.is_none() {
+            let seq = v
+                .downcast::<PyList>()
+                .map_err(|_| PyRuntimeError::new_err("dep_values must be a list"))?;
+            for item in seq.iter() {
+                // try types in order: int, float, str, bool
+                if let Ok(i) = item.extract::<i64>() {
+                    dep_values.push(rusty_neat::genes::TraitValue::Int(i));
+                    continue;
+                }
+                if let Ok(f) = item.extract::<f64>() {
+                    dep_values.push(rusty_neat::genes::TraitValue::Float(f));
+                    continue;
+                }
+                if let Ok(s) = item.extract::<String>() {
+                    dep_values.push(rusty_neat::genes::TraitValue::Str(s));
+                    continue;
+                }
+                if let Ok(b) = item.extract::<bool>() {
+                    dep_values.push(rusty_neat::genes::TraitValue::Bool(b));
+                    continue;
+                }
+                return Err(PyRuntimeError::new_err("unsupported type in dep_values"));
+            }
+        }
+    }
+
+    // detail
+    let detail_any = d
+        .get_item("detail")
+        .ok_or_else(|| PyRuntimeError::new_err("detail key required in TraitParameters"))?;
+    let detail_dict = detail_any
+        .downcast::<PyDict>()
+        .map_err(|_| PyRuntimeError::new_err("detail must be a dict"))?;
+    let ttype = detail_dict
+        .get_item("type")
+        .and_then(|v| v.extract::<String>().ok())
+        .ok_or_else(|| PyRuntimeError::new_err("detail.type must be a string"))?;
+
+    let detail =
+        match ttype.as_str() {
+            "Int" => {
+                let min = detail_dict
+                    .get_item("min")
+                    .and_then(|v| v.extract::<i64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Int.detail.min required and must be int")
+                    })?;
+                let max = detail_dict
+                    .get_item("max")
+                    .and_then(|v| v.extract::<i64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Int.detail.max required and must be int")
+                    })?;
+                let mut_power = detail_dict
+                    .get_item("mut_power")
+                    .and_then(|v| v.extract::<i64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Int.detail.mut_power required and must be int")
+                    })?;
+                let mut_replace_prob = detail_dict
+                    .get_item("mut_replace_prob")
+                    .and_then(|v| v.extract::<f64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err(
+                            "Int.detail.mut_replace_prob required and must be float",
+                        )
+                    })?;
+                rusty_neat::genes::TraitDetail::Int {
+                    min,
+                    max,
+                    mut_power,
+                    mut_replace_prob,
+                }
+            }
+            "Float" => {
+                let min = detail_dict
+                    .get_item("min")
+                    .and_then(|v| v.extract::<f64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Float.detail.min required and must be float")
+                    })?;
+                let max = detail_dict
+                    .get_item("max")
+                    .and_then(|v| v.extract::<f64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Float.detail.max required and must be float")
+                    })?;
+                let mut_power = detail_dict
+                    .get_item("mut_power")
+                    .and_then(|v| v.extract::<f64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Float.detail.mut_power required and must be float")
+                    })?;
+                let mut_replace_prob = detail_dict
+                    .get_item("mut_replace_prob")
+                    .and_then(|v| v.extract::<f64>().ok())
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err(
+                            "Float.detail.mut_replace_prob required and must be float",
+                        )
+                    })?;
+                rusty_neat::genes::TraitDetail::Float {
+                    min,
+                    max,
+                    mut_power,
+                    mut_replace_prob,
+                }
+            }
+            "Str" => {
+                let set_any = detail_dict
+                    .get_item("set")
+                    .ok_or_else(|| PyRuntimeError::new_err("Str.detail.set required"))?;
+                let set_list = set_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("Str.detail.set must be list of strings")
+                })?;
+                let mut set: Vec<String> = Vec::new();
+                for it in set_list.iter() {
+                    set.push(it.extract::<String>().map_err(|_| {
+                        PyRuntimeError::new_err("Str.detail.set must contain strings")
+                    })?);
+                }
+                let probs_any = detail_dict
+                    .get_item("probs")
+                    .ok_or_else(|| PyRuntimeError::new_err("Str.detail.probs required"))?;
+                let probs_list = probs_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("Str.detail.probs must be list of floats")
+                })?;
+                let mut probs: Vec<f64> = Vec::new();
+                for it in probs_list.iter() {
+                    probs.push(it.extract::<f64>().map_err(|_| {
+                        PyRuntimeError::new_err("Str.detail.probs must contain floats")
+                    })?);
+                }
+                rusty_neat::genes::TraitDetail::Str { set, probs }
+            }
+            "IntSet" => {
+                let set_any = detail_dict
+                    .get_item("set")
+                    .ok_or_else(|| PyRuntimeError::new_err("IntSet.detail.set required"))?;
+                let set_list = set_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("IntSet.detail.set must be list of ints")
+                })?;
+                let mut set: Vec<i64> = Vec::new();
+                for it in set_list.iter() {
+                    set.push(it.extract::<i64>().map_err(|_| {
+                        PyRuntimeError::new_err("IntSet.detail.set must contain ints")
+                    })?);
+                }
+                let probs_any = detail_dict
+                    .get_item("probs")
+                    .ok_or_else(|| PyRuntimeError::new_err("IntSet.detail.probs required"))?;
+                let probs_list = probs_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("IntSet.detail.probs must be list of floats")
+                })?;
+                let mut probs: Vec<f64> = Vec::new();
+                for it in probs_list.iter() {
+                    probs.push(it.extract::<f64>().map_err(|_| {
+                        PyRuntimeError::new_err("IntSet.detail.probs must contain floats")
+                    })?);
+                }
+                rusty_neat::genes::TraitDetail::IntSet { set, probs }
+            }
+            "FloatSet" => {
+                let set_any = detail_dict
+                    .get_item("set")
+                    .ok_or_else(|| PyRuntimeError::new_err("FloatSet.detail.set required"))?;
+                let set_list = set_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("FloatSet.detail.set must be list of floats")
+                })?;
+                let mut set: Vec<f64> = Vec::new();
+                for it in set_list.iter() {
+                    set.push(it.extract::<f64>().map_err(|_| {
+                        PyRuntimeError::new_err("FloatSet.detail.set must contain floats")
+                    })?);
+                }
+                let probs_any = detail_dict
+                    .get_item("probs")
+                    .ok_or_else(|| PyRuntimeError::new_err("FloatSet.detail.probs required"))?;
+                let probs_list = probs_any.downcast::<PyList>().map_err(|_| {
+                    PyRuntimeError::new_err("FloatSet.detail.probs must be list of floats")
+                })?;
+                let mut probs: Vec<f64> = Vec::new();
+                for it in probs_list.iter() {
+                    probs.push(it.extract::<f64>().map_err(|_| {
+                        PyRuntimeError::new_err("FloatSet.detail.probs must contain floats")
+                    })?);
+                }
+                rusty_neat::genes::TraitDetail::FloatSet { set, probs }
+            }
+            other => {
+                return Err(PyRuntimeError::new_err(format!(
+                    "unknown detail.type: {}",
+                    other
+                )))
+            }
+        };
+
+    Ok(rusty_neat::genes::TraitParameters {
+        importance_coeff,
+        mutation_prob,
+        detail,
+        dep_key,
+        dep_values,
+    })
 }
 
 #[pymodule]
