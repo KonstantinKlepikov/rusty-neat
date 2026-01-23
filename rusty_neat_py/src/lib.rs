@@ -167,6 +167,61 @@ impl PyGenome {
             Ok(())
         })
     }
+
+    /// Get genome fitness (simple accessor)
+    fn get_fitness(&self) -> PyResult<f64> {
+        let g = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(g.get_fitness())
+    }
+
+    /// Set genome fitness
+    fn set_fitness(&mut self, fitness: f64) -> PyResult<()> {
+        let mut g = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        g.set_fitness(fitness);
+        Ok(())
+    }
+
+    /// Save genome to a file. Currently writes a debug representation (placeholder).
+    fn save(&self, path: &str) -> PyResult<()> {
+        let g = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let s = format!("{:#?}", &*g);
+        fs::write(path, s).map_err(|e| PyRuntimeError::new_err(format!("IO error: {}", e)))?;
+        Ok(())
+    }
+
+    /// Mutate link weights using default Parameters (convenience wrapper).
+    #[allow(deprecated)]
+    fn mutate_link_weights(&mut self) -> PyResult<bool> {
+        let mut g = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let params = rusty_neat::Parameters::default();
+        let mut rng = rand::thread_rng();
+        Ok(g.mutate_link_weights(&params, &mut rng))
+    }
+
+    /// Randomize all link weights using default Parameters (convenience wrapper).
+    #[allow(deprecated)]
+    fn randomize_link_weights(&mut self) -> PyResult<()> {
+        let mut g = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let params = rusty_neat::Parameters::default();
+        let mut rng = rand::thread_rng();
+        g.randomize_link_weights(&params, &mut rng);
+        Ok(())
+    }
 }
 
 /// Iterator over neuron_genes in a Genome (lightweight, reads one-by-one)
