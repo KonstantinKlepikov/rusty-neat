@@ -15,6 +15,7 @@ rusty_neat = { path = "../", package = "rusty-neat" }
 numpy = "0.18"
 ndarray = "0.15"
 serde_json = "1.0"
+rand = "0.9"
 
 [package.metadata.maturin]
 sdist = true

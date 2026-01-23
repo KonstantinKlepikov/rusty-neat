@@ -55,14 +55,14 @@
     - Фаза 0 — Инвентаризация и согласование API
 
       - [x] Собрать полный список экспортируемых типов и методов (см. `research/python_integration.md`).
-      - [x] Решить совместимость pickle/серриализации и ожидания NumPy I/O.
-      - [x] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy).
+      - [x] Решить совместимость pickle/серриализации и ожидания NumPy I/O. Сохранено в `research/pickle.md`.
+      - [x] Составить таблицу маппинга: C++ сигнатура → Rust type → PyO3 signature (включая типы NumPy). Сохранено в `research/bind_map.md`.
 
     - Фаза 1 — Дизайн API
 
       - [x] Решить контракты владения/потоков: `Arc<Mutex<T>>` vs `PyRef` для каждого экспортируемого класса.
-      - [x] Спроектировать Python‑уровень: какие поля делать свойствами, какие методы — напрямую, какие пакеты — упаковывать в маленькие Py‑классы (LinkGene/NeuronGene).
-      - [x] Документировать соглашения по Pickle/Сериализации (совместимость C++ → Rust — опционально).
+      - [x] Спроектировать Python‑уровень: какие поля делать свойствами, какие методы — напрямую, какие пакеты — упаковывать в маленькие Py‑классы (LinkGene/NeuronGene). Сохранено в `research/python_integration.md`.
+      - [x] Документировать соглашения по Pickle/Сериализации (совместимость C++ → Rust — опционально). Сохранено в `research/pickle.md`.
 
     - Фаза 2 — Создание skeleton crate `rusty_neat_py`
 
@@ -87,9 +87,9 @@
 
     - Фаза 5 — Population / Species / PhenotypeBehavior
 
-      - [ ] Реализовать `PyPopulation` с методами `Epoch`, `Tick`, `GetBestGenome` и доступом к `Species`/`Genome` через ссылочные обёртки.
-      - [ ] Экспорт `PhenotypeBehavior` и его контрактных методов (Acquire, Distance_To, Successful).
-      - [ ] Подумать про освобождение GIL в тяжёлых операциях (use `py.allow_threads`).
+      - [x] Реализовать `PyPopulation` с методами `Epoch`, `Tick`, `GetBestGenome` и доступом к `Species`/`Genome` через ссылочные обёртки.
+      - [x] Экспорт `PhenotypeBehavior` и его контрактных методов (Acquire, Distance_To, Successful).
+      - [x] Подумать про освобождение GIL в тяжёлых операциях (use `py.allow_threads`) - сохранено в `research/gil_recomendation.md`.
 
     - Фаза 6 — Тесты и CI
       - [ ] Добавить pytest smoke tests, взяв примеры из `cneat/MultiNEAT/examples` (TestNEAT_xor, TestHyperNEAT_xor и др.) и адаптировать их для Rust биндингов.

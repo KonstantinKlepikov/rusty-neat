@@ -2,7 +2,9 @@ use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use rand::Rng;
 use serde_json::json;
+use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
@@ -1784,6 +1786,586 @@ fn trait_parameters_to_pydict(py: Python, tp: &rusty_neat::genes::TraitParameter
     dict.to_object(py)
 }
 
+/// Reference wrapper for a Genome inside a Population (lightweight, non-owning)
+#[pyclass(module = "rusty_neat_py")]
+pub struct PyGenomeRef {
+    population: Arc<RwLock<rusty_neat::Population>>,
+    idx: usize,
+}
+
+#[pymethods]
+impl PyGenomeRef {
+    fn get_id(&self) -> PyResult<u64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes.get(self.idx).map(|g| g.id).unwrap_or(0))
+    }
+
+    fn get_fitness(&self) -> PyResult<f64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes.get(self.idx).map(|g| g.fitness).unwrap_or(0.0))
+    }
+
+    fn get_adjusted_fitness(&self) -> PyResult<f64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes
+            .get(self.idx)
+            .map(|g| g.adjusted_fitness)
+            .unwrap_or(0.0))
+    }
+
+    fn num_neurons(&self) -> PyResult<usize> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes
+            .get(self.idx)
+            .map(|g| g.neuron_genes.len())
+            .unwrap_or(0))
+    }
+
+    fn num_links(&self) -> PyResult<usize> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes
+            .get(self.idx)
+            .map(|g| g.link_genes.len())
+            .unwrap_or(0))
+    }
+}
+
+/// Reference wrapper for a Species inside a Population
+#[pyclass(module = "rusty_neat_py")]
+pub struct PySpeciesRef {
+    population: Arc<RwLock<rusty_neat::Population>>,
+    idx: usize,
+}
+
+#[pymethods]
+impl PySpeciesRef {
+    fn get_id(&self) -> PyResult<u64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.species.get(self.idx).map(|s| s.id).unwrap_or(0))
+    }
+
+    fn get_members(&self, py: Python) -> PyResult<PyObject> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(s) = p.species.get(self.idx) {
+            let list = PyList::empty(py);
+            for m in &s.members {
+                list.append(*m).ok();
+            }
+            Ok(list.to_object(py))
+        } else {
+            Ok(PyList::empty(py).to_object(py))
+        }
+    }
+
+    fn get_age(&self) -> PyResult<u64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.species.get(self.idx).map(|s| s.age).unwrap_or(0))
+    }
+
+    fn get_best_fitness(&self) -> PyResult<f64> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.species
+            .get(self.idx)
+            .map(|s| s.best_fitness)
+            .unwrap_or(0.0))
+    }
+}
+
+/// PyO3 wrapper for PhenotypeBehavior
+#[pyclass(module = "rusty_neat_py")]
+pub struct PyPhenotypeBehavior {
+    inner: Arc<RwLock<rusty_neat::PhenotypeBehavior>>,
+}
+
+#[pymethods]
+impl PyPhenotypeBehavior {
+    #[new]
+    fn new() -> Self {
+        PyPhenotypeBehavior {
+            inner: Arc::new(RwLock::new(rusty_neat::PhenotypeBehavior::new())),
+        }
+    }
+
+    /// Get behavior data as a list of lists of floats
+    fn get_data(&self, py: Python) -> PyResult<PyObject> {
+        let pb = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let list = PyList::empty(py);
+        for row in &pb.m_data {
+            let r = PyList::empty(py);
+            for v in row {
+                r.append(v).ok();
+            }
+            list.append(r).ok();
+        }
+        Ok(list.to_object(py))
+    }
+
+    /// Set behavior data from nested sequences of floats
+    fn set_data(&mut self, data: &PyAny) -> PyResult<()> {
+        let seq = data
+            .extract::<Vec<Vec<f64>>>()
+            .map_err(|e| PyRuntimeError::new_err(format!("expected nested float lists: {}", e)))?;
+        let mut pb = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        pb.m_data = seq;
+        Ok(())
+    }
+
+    /// Acquire behavior from a Genome: returns true if acquired (default false)
+    fn acquire(&mut self, py_genome: PyRef<PyGenome>) -> PyResult<bool> {
+        let mut pb = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let g = py_genome
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(pb.acquire(&*g))
+    }
+
+    /// Compute distance to another PhenotypeBehavior
+    fn distance_to(&self, other: PyRef<PyPhenotypeBehavior>) -> PyResult<f64> {
+        let pb = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let other_pb = other
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(pb.distance_to(&*other_pb))
+    }
+
+    /// Whether the behavior is considered successful
+    fn successful(&self) -> PyResult<bool> {
+        let pb = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(pb.successful())
+    }
+}
+
+/// PyPopulation wrapper providing simple population API (Epoch/Tick/GetBestGenome and accessors)
+#[pyclass(module = "rusty_neat_py")]
+pub struct PyPopulation {
+    inner: Arc<RwLock<rusty_neat::Population>>,
+}
+
+#[pymethods]
+impl PyPopulation {
+    /// Create a new Population from a PyParameters instance
+    #[new]
+    fn new(py_params: &PyAny) -> PyResult<Self> {
+        // accept either a PyParameters or a plain parameters dict? For now require PyParameters
+        let params_obj = py_params
+            .downcast::<pyo3::PyCell<PyParameters>>()
+            .map_err(|_| PyRuntimeError::new_err("expected PyParameters instance"))?;
+        let params = params_obj
+            .borrow()
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?
+            .clone();
+
+        Ok(PyPopulation {
+            inner: Arc::new(RwLock::new(rusty_neat::Population::new(params))),
+        })
+    }
+
+    /// Generational epoch: selection, reproduce (tournament), mutate, speciate (simple)
+    #[allow(deprecated)]
+    fn epoch(&mut self) -> PyResult<u64> {
+        // Generational evolutionary step:
+        // - keep a small elite fraction
+        // - fill remaining slots by tournament selection + mutation
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let n = p.genomes.len();
+        if n == 0 {
+            p.generation += 1;
+            return Ok(p.generation);
+        }
+
+        // build sorted index list by fitness (desc)
+        let mut idxs: Vec<usize> = (0..n).collect();
+        idxs.sort_by(|&a, &b| {
+            let fa = p.genomes[a].fitness;
+            let fb = p.genomes[b].fitness;
+            fb.partial_cmp(&fa).unwrap_or(Ordering::Equal)
+        });
+
+        let elite_count = std::cmp::max(1, ((n as f64) * 0.1).ceil() as usize);
+        let mut new_genomes: Vec<rusty_neat::Genome> = Vec::new();
+
+        // copy elites
+        for &i in idxs.iter().take(elite_count) {
+            new_genomes.push(p.genomes[i].clone());
+        }
+
+        // reproduction via tournament selection + mutation
+        let mut rng = rand::thread_rng();
+        // copy fitnesses and parameters to avoid borrowing pop during selection/mutations
+        let fitnesses: Vec<f64> = p.genomes.iter().map(|g| g.fitness).collect();
+        let params_clone = p.parameters.clone();
+        while new_genomes.len() < n {
+            // tournament selection (size 3)
+            let mut best_idx: usize = 0;
+            let mut best_f = std::f64::NEG_INFINITY;
+            for _ in 0..3 {
+                let r = rng.random_range(0..n);
+                let f = fitnesses[r];
+                if f > best_f {
+                    best_f = f;
+                    best_idx = r;
+                }
+            }
+
+            let parent = p.genomes[best_idx].clone();
+            let mut child = parent.clone();
+
+            // weight mutation
+            if rng.random::<f64>() < params_clone.weight_mutation_rate {
+                child.mutate_link_weights(&params_clone, &mut rng);
+            }
+
+            // structural mutations with small probabilities
+            if rng.random::<f64>() < 0.05 {
+                child.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng);
+            }
+            if rng.random::<f64>() < 0.02 {
+                child.mutate_add_neuron(&mut p.innovation_db, &params_clone, &mut rng);
+            }
+            if rng.random::<f64>() < 0.02 {
+                child.mutate_remove_link(&params_clone, &mut rng);
+            }
+            if rng.random::<f64>() < 0.01 {
+                child.mutate_remove_simple_neuron(&mut p.innovation_db, &params_clone, &mut rng);
+            }
+
+            new_genomes.push(child);
+        }
+
+        p.genomes = new_genomes;
+        p.generation += 1;
+        Ok(p.generation)
+    }
+
+    /// Alias for epoch
+    fn tick(&mut self) -> PyResult<u64> {
+        self.epoch()
+    }
+
+    /// Return the best genome by fitness as a PyGenomeRef, or None if no genomes
+    fn get_best_genome(&self, py: Python) -> PyResult<Option<PyObject>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if p.genomes.is_empty() {
+            return Ok(None);
+        }
+        let mut best_idx = 0usize;
+        let mut best_f = p.genomes[0].fitness;
+        for (i, g) in p.genomes.iter().enumerate() {
+            if g.fitness > best_f {
+                best_f = g.fitness;
+                best_idx = i;
+            }
+        }
+        drop(p);
+        let gref = PyGenomeRef {
+            population: self.inner.clone(),
+            idx: best_idx,
+        };
+        Ok(Some(Py::new(py, gref)?.into_py(py)))
+    }
+
+    /// Return number of genomes
+    fn num_genomes(&self) -> PyResult<usize> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.genomes.len())
+    }
+
+    /// Return number of species
+    fn num_species(&self) -> PyResult<usize> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(p.species.len())
+    }
+
+    /// Get species by index as PySpeciesRef
+    fn get_species(&self, py: Python, idx: usize) -> PyResult<Option<PyObject>> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if idx >= p.species.len() {
+            return Ok(None);
+        }
+        drop(p);
+        let sref = PySpeciesRef {
+            population: self.inner.clone(),
+            idx,
+        };
+        Ok(Some(Py::new(py, sref)?.into_py(py)))
+    }
+
+    /// Return list of species wrappers
+    fn list_species(&self, py: Python) -> PyResult<PyObject> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let list = PyList::empty(py);
+        for i in 0..p.species.len() {
+            let sref = PySpeciesRef {
+                population: self.inner.clone(),
+                idx: i,
+            };
+            list.append(Py::new(py, sref)?).ok();
+        }
+        Ok(list.to_object(py))
+    }
+
+    /// Return list of genome wrappers
+    fn list_genomes(&self, py: Python) -> PyResult<PyObject> {
+        let p = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let list = PyList::empty(py);
+        for i in 0..p.genomes.len() {
+            let gref = PyGenomeRef {
+                population: self.inner.clone(),
+                idx: i,
+            };
+            list.append(Py::new(py, gref)?).ok();
+        }
+        Ok(list.to_object(py))
+    }
+
+    /// Add a genome from a `PyGenomeInitStruct` and return its index in the population vector.
+    fn add_genome_from_initstruct(
+        &mut self,
+        py_init: PyRef<PyGenomeInitStruct>,
+    ) -> PyResult<usize> {
+        let init: &PyGenomeInitStruct = &*py_init;
+        let output_act = match init.output_act_type.as_str() {
+            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+            _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+        };
+        let hidden_act = match init.hidden_act_type.as_str() {
+            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
+            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+            _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
+        };
+        let seed = match init.seed_type.as_str() {
+            "Perceptron" => rusty_neat::genome::GenomeSeedType::Perceptron,
+            "Layered" => rusty_neat::genome::GenomeSeedType::Layered,
+            _ => rusty_neat::genome::GenomeSeedType::Perceptron,
+        };
+
+        let ginit = rusty_neat::GenomeInitStruct {
+            num_inputs: init.num_inputs,
+            num_hidden: init.num_hidden,
+            num_outputs: init.num_outputs,
+            fs_neat: init.fs_neat,
+            output_act_type: output_act,
+            hidden_act_type: hidden_act,
+            seed_type: seed,
+            num_layers: init.num_layers,
+            fs_neat_links: init.fs_neat_links,
+        };
+
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let new_id = p.genomes.iter().map(|g| g.id).max().unwrap_or(0) + 1;
+        let g = rusty_neat::Genome::new(new_id, &ginit);
+        p.genomes.push(g);
+        Ok(p.genomes.len() - 1)
+    }
+
+    /// Add a random (seed) genome with the specified dimensions and return its index.
+    #[allow(deprecated)]
+    fn add_random_genome(
+        &mut self,
+        num_inputs: usize,
+        num_hidden: usize,
+        num_outputs: usize,
+    ) -> PyResult<usize> {
+        let ginit = rusty_neat::GenomeInitStruct {
+            num_inputs,
+            num_hidden,
+            num_outputs,
+            fs_neat: false,
+            output_act_type: rusty_neat::genes::ActivationFunction::SignedSigmoid,
+            hidden_act_type: rusty_neat::genes::ActivationFunction::SignedSigmoid,
+            seed_type: rusty_neat::genome::GenomeSeedType::Perceptron,
+            num_layers: 1,
+            fs_neat_links: 0,
+        };
+
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let new_id = p.genomes.iter().map(|g| g.id).max().unwrap_or(0) + 1;
+        let mut g = rusty_neat::Genome::new(new_id, &ginit);
+        let params_clone = p.parameters.clone();
+        let mut rng = rand::thread_rng();
+        if rng.random::<f64>() < 0.5 {
+            g.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng);
+        }
+        if rng.random::<f64>() < 0.2 {
+            g.mutate_add_neuron(&mut p.innovation_db, &params_clone, &mut rng);
+        }
+        p.genomes.push(g);
+        Ok(p.genomes.len() - 1)
+    }
+
+    /// Remove a genome at index `idx`. Returns True if removed.
+    fn remove_genome(&mut self, idx: usize) -> PyResult<bool> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if idx >= p.genomes.len() {
+            return Ok(false);
+        }
+        p.genomes.remove(idx);
+        Ok(true)
+    }
+
+    /// Mutate genome at `idx`. `kind` can be one of: "weights", "add_link", "add_neuron", "remove_link", "remove_neuron", or "all"/None.
+    /// Returns True if at least one mutation was applied.
+    #[allow(deprecated)]
+    fn mutate_genome(&mut self, idx: usize, kind: Option<&str>) -> PyResult<bool> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if idx >= p.genomes.len() {
+            return Ok(false);
+        }
+        let mut g = p.genomes[idx].clone();
+        let params_clone = p.parameters.clone();
+        let mut rng = rand::thread_rng();
+        let mut applied = false;
+
+        match kind.unwrap_or("all") {
+            "weights" => {
+                if g.mutate_link_weights(&params_clone, &mut rng) {
+                    applied = true;
+                }
+            }
+            "add_link" => {
+                if g.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng) {
+                    applied = true;
+                }
+            }
+            "add_neuron" => {
+                if g.mutate_add_neuron(&mut p.innovation_db, &params_clone, &mut rng) {
+                    applied = true;
+                }
+            }
+            "remove_link" => {
+                if g.mutate_remove_link(&params_clone, &mut rng) {
+                    applied = true;
+                }
+            }
+            "remove_neuron" => {
+                if g.mutate_remove_simple_neuron(&mut p.innovation_db, &params_clone, &mut rng) {
+                    applied = true;
+                }
+            }
+            _ => {
+                // probabilistic set similar to earlier mutate_genome
+                if rng.random::<f64>() < params_clone.weight_mutation_rate {
+                    if g.mutate_link_weights(&params_clone, &mut rng) {
+                        applied = true;
+                    }
+                }
+                if rng.random::<f64>() < 0.05 {
+                    if g.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng) {
+                        applied = true;
+                    }
+                }
+                if rng.random::<f64>() < 0.02 {
+                    if g.mutate_add_neuron(&mut p.innovation_db, &params_clone, &mut rng) {
+                        applied = true;
+                    }
+                }
+                if rng.random::<f64>() < 0.02 {
+                    if g.mutate_remove_link(&params_clone, &mut rng) {
+                        applied = true;
+                    }
+                }
+                if rng.random::<f64>() < 0.01 {
+                    if g.mutate_remove_simple_neuron(&mut p.innovation_db, &params_clone, &mut rng)
+                    {
+                        applied = true;
+                    }
+                }
+            }
+        }
+
+        p.genomes[idx] = g;
+        Ok(applied)
+    }
+
+    // ...existing code...
+}
+
 // Helper: convert Python dict -> Rust TraitParameters
 fn pydict_to_trait_parameters(params: &PyAny) -> PyResult<rusty_neat::genes::TraitParameters> {
     let d = params
@@ -2039,5 +2621,9 @@ fn rusty_neat_py(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGenomeInitStruct>()?;
     m.add_class::<PyNeuronIterator>()?;
     m.add_class::<PyLinkIterator>()?;
+    m.add_class::<PyGenomeRef>()?;
+    m.add_class::<PySpeciesRef>()?;
+    m.add_class::<PyPhenotypeBehavior>()?;
+    m.add_class::<PyPopulation>()?;
     Ok(())
 }
