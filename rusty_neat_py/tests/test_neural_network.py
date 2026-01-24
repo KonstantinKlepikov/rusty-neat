@@ -1,23 +1,12 @@
-import importlib
-import tempfile
 import os
-import pytest
+import tempfile
+
 import numpy as np
-
-
-def _import_module_or_skip():
-    try:
-        return importlib.import_module("rusty_neat_py")
-    except Exception as e:
-        pytest.skip(f"rusty_neat_py extension not available: {e}")
+import rusty_neat_py as rnp
 
 
 def test_input_activate_output_and_save_load():
-    m = _import_module_or_skip()
-
-    NN = m.PyNeuralNetwork
-
-    net = NN()
+    net = rnp.PyNeuralNetwork()
 
     # input as python list — should not raise
     net.input([0.1, 0.2, 0.3])
@@ -34,11 +23,11 @@ def test_input_activate_output_and_save_load():
     assert isinstance(out, np.ndarray)
 
     # Save to a temporary file and load back
-    fd, path = tempfile.mkstemp(suffix=".json")
+    fd, path = tempfile.mkstemp(suffix='.json')
     os.close(fd)
     try:
         net.save(path)
-        loaded = NN.load(path)
+        loaded = net.load(path)
         # basic sanity: loaded object exists and has output() method
         out2 = loaded.output()
         assert isinstance(out2, np.ndarray)

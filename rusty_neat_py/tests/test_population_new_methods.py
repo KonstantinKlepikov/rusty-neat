@@ -1,9 +1,9 @@
-import rusty_neat_py
+import rusty_neat_py as rnp
 
 
 def test_epoch_tick_and_get_best_smoke() -> None:
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnp.PyParameters()
+    pop = rnp.PyPopulation(params)
 
     # empty population -> get_best_genome() is None
     assert pop.get_best_genome() is None
@@ -16,13 +16,13 @@ def test_epoch_tick_and_get_best_smoke() -> None:
 
 
 def test_manual_fill_add_remove_mutate() -> None:
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnp.PyParameters()
+    pop = rnp.PyPopulation(params)
 
     assert pop.num_genomes() == 0
 
     # add genome from init struct
-    init = rusty_neat_py.PyGenomeInitStruct(1, 0, 1)
+    init = rnp.PyGenomeInitStruct(1, 0, 1)
     idx = pop.add_genome_from_initstruct(init)
     assert isinstance(idx, int)
     assert pop.num_genomes() == 1
@@ -53,37 +53,44 @@ def test_manual_fill_add_remove_mutate() -> None:
 
 
 def test_mutate_genome_kinds() -> None:
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnp.PyParameters()
+    pop = rnp.PyPopulation(params)
 
-    init = rusty_neat_py.PyGenomeInitStruct(2, 1, 1)
+    init = rnp.PyGenomeInitStruct(2, 1, 1)
     idx = pop.add_genome_from_initstruct(init)
 
     # try each kind
-    for kind in ("weights", "add_link", "add_neuron", "remove_link", "remove_neuron", None):
+    for kind in (
+        'weights',
+        'add_link',
+        'add_neuron',
+        'remove_link',
+        'remove_neuron',
+        None,
+    ):
         result = pop.mutate_genome(idx, kind)
         assert isinstance(result, bool)
 
 
 def test_pyphenotypebehavior_basic_contracts() -> None:
     # basic construction and data roundtrip
-    pb = rusty_neat_py.PyPhenotypeBehavior()
+    pb = rnp.PyPhenotypeBehavior()
     assert pb.successful() is True
 
     # set and get data
     data = [[0.1, 0.2], [0.3]]
     pb.set_data(data)
     got = pb.get_data()
-    assert isinstance(got, list) or hasattr(got, "__iter__")
+    assert isinstance(got, list) or hasattr(got, '__iter__')
 
     # distance_to identical -> 0.0 expected by default impl
-    other = rusty_neat_py.PyPhenotypeBehavior()
+    other = rnp.PyPhenotypeBehavior()
     other.set_data([[0.1, 0.2], [0.3]])
     dist = pb.distance_to(other)
     assert isinstance(dist, float)
     assert dist == 0.0
 
     # acquire with a simple genome (default returns False)
-    g = rusty_neat_py.PyGenome(1, 1, 0, 1)
+    g = rnp.PyGenome(1, 1, 0, 1)
     acquired = pb.acquire(g)
     assert acquired in (True, False)

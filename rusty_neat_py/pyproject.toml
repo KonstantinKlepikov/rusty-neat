@@ -56,6 +56,7 @@ quote-style = "single"
 check_untyped_defs = true
 ignore_missing_imports = true
 mypy_path = ["src", "app", "tests"]
+plugins = ["pydantic.mypy"]
 
 
 [tool.pytest.ini_options]

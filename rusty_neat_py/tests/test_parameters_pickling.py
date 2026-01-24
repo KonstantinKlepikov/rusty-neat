@@ -11,7 +11,7 @@ def test_parameters_getstate_setstate_direct():
     assert isinstance(state, dict)
 
     # change a numeric field and ensure __setstate__ applies it
-    state["min_weight"] = 3.14159
+    state['min_weight'] = 3.14159
     p2 = rnp.PyParameters()
     p2.__setstate__(state)
     assert abs(p2.get_min_weight() - 3.14159) < 1e-12

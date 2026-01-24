@@ -1,15 +1,14 @@
-import rusty_neat_py
+import rusty_neat_py as rnt
 
 
 def test_species_get_leader():
-
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnt.PyParameters()
+    pop = rnt.PyPopulation(params)
 
     # add three genomes and set fitnesses
-    idx0 = pop.add_random_genome(1, 0, 1)
-    idx1 = pop.add_random_genome(1, 0, 1)
-    idx2 = pop.add_random_genome(1, 0, 1)
+    _ = pop.add_random_genome(1, 0, 1)
+    _ = pop.add_random_genome(1, 0, 1)
+    _ = pop.add_random_genome(1, 0, 1)
 
     genomes = pop.list_genomes()
     g0 = genomes[0]

@@ -1,13 +1,10 @@
-import json
-import os
-
 from rusty_neat_py import PyParameters
 
 
 def test_parameters_save_load(tmp_path):
     p = PyParameters()
     p.set_min_weight(-3.14)
-    path = tmp_path / "params.json"
+    path = tmp_path / 'params.json'
     p.save(str(path))
     assert path.exists()
 

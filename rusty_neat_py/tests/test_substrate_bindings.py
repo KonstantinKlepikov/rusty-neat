@@ -31,7 +31,7 @@ def test_substrate_flags_and_min_cppn():
     assert s.get_allow_input_output_links() is True
 
     # activation function set/get
-    s.set_output_nodes_activation("Tanh")
-    assert s.get_output_nodes_activation() == "Tanh"
-    s.set_hidden_nodes_activation("Relu")
-    assert s.get_hidden_nodes_activation() == "Relu"
+    s.set_output_nodes_activation('Tanh')
+    assert s.get_output_nodes_activation() == 'Tanh'
+    s.set_hidden_nodes_activation('Relu')
+    assert s.get_hidden_nodes_activation() == 'Relu'

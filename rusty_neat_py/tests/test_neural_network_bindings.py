@@ -1,4 +1,5 @@
 import numpy as np
+
 import rusty_neat_py as rnp
 
 
@@ -22,7 +23,7 @@ def test_input_activate_output_list_and_ndarray(tmp_path):
     assert isinstance(out2, np.ndarray)
 
     # Save and load (JSON) round-trip
-    p = tmp_path / "net.json"
+    p = tmp_path / 'net.json'
     net.save(str(p))
     net2 = rnp.PyNeuralNetwork.load(str(p))
     assert isinstance(net2, rnp.PyNeuralNetwork)
@@ -33,8 +34,10 @@ def test_input_activate_output_list_and_ndarray(tmp_path):
 
 
 def test_build_hyperneat_phenotype(tmp_path):
-    # Create a genome that will act as a CPPN: number of inputs must be >= substrate.get_min_cppn_inputs()
-    # For 2D coords min_cppn_inputs = 2*2 + 1 = 5, and min outputs = 2 (link output + bias/other)
+    # Create a genome that will act as a CPPN:
+    # number of inputs must be >= substrate.get_min_cppn_inputs()
+    # For 2D coords min_cppn_inputs = 2*2 + 1 = 5,
+    # and min outputs = 2 (link output + bias/other)
     genome = rnp.PyGenome(2, 5, 0, 2)
     net = rnp.PyNeuralNetwork()
 

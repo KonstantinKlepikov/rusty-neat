@@ -1,9 +1,9 @@
-import rusty_neat_py
+import rusty_neat_py as rnp
 
 
 def test_population_epoch_tick_and_get_best() -> None:
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnp.PyParameters()
+    pop = rnp.PyPopulation(params)
 
     # empty population: get_best_genome() -> None
     best = pop.get_best_genome()
@@ -18,13 +18,13 @@ def test_population_epoch_tick_and_get_best() -> None:
 
 
 def test_population_manual_fill_and_mutation() -> None:
-    params = rusty_neat_py.PyParameters()
-    pop = rusty_neat_py.PyPopulation(params)
+    params = rnp.PyParameters()
+    pop = rnp.PyPopulation(params)
 
     assert pop.num_genomes() == 0
 
     # add genome from init struct
-    init = rusty_neat_py.PyGenomeInitStruct(1, 0, 1)
+    init = rnp.PyGenomeInitStruct(1, 0, 1)
     idx = pop.add_genome_from_initstruct(init)
     assert isinstance(idx, int)
     assert pop.num_genomes() == 1
