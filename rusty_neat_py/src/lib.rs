@@ -1386,12 +1386,14 @@ impl PySubstrate {
             .inner
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        s.output_nodes_activation = match name {
-            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
-            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
-            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
-            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
-            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+        s.output_nodes_activation = match name.to_lowercase().as_str() {
+            "unsignedsigmoid" | "unsigned_sigmoid" => {
+                rusty_neat::genes::ActivationFunction::UnsignedSigmoid
+            }
+            "tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "softplus" => rusty_neat::genes::ActivationFunction::Softplus,
             _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
         };
         Ok(())
@@ -1410,12 +1412,14 @@ impl PySubstrate {
             .inner
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        s.hidden_nodes_activation = match name {
-            "UnsignedSigmoid" => rusty_neat::genes::ActivationFunction::UnsignedSigmoid,
-            "Tanh" => rusty_neat::genes::ActivationFunction::Tanh,
-            "Linear" => rusty_neat::genes::ActivationFunction::Linear,
-            "Relu" => rusty_neat::genes::ActivationFunction::Relu,
-            "Softplus" => rusty_neat::genes::ActivationFunction::Softplus,
+        s.hidden_nodes_activation = match name.to_lowercase().as_str() {
+            "unsignedsigmoid" | "unsigned_sigmoid" => {
+                rusty_neat::genes::ActivationFunction::UnsignedSigmoid
+            }
+            "tanh" => rusty_neat::genes::ActivationFunction::Tanh,
+            "linear" => rusty_neat::genes::ActivationFunction::Linear,
+            "relu" => rusty_neat::genes::ActivationFunction::Relu,
+            "softplus" => rusty_neat::genes::ActivationFunction::Softplus,
             _ => rusty_neat::genes::ActivationFunction::SignedSigmoid,
         };
         Ok(())
@@ -1985,6 +1989,61 @@ impl PyGenomeRef {
             .get(self.idx)
             .map(|g| g.link_genes.len())
             .unwrap_or(0))
+    }
+
+    /// Build phenotype into a provided `PyNeuralNetwork`.
+    fn build_phenotype(&self, py: Python, py_net: PyRef<PyNeuralNetwork>) -> PyResult<()> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let genome = p
+            .genomes
+            .get(self.idx)
+            .ok_or_else(|| PyRuntimeError::new_err("invalid genome index"))?;
+        let genome_clone = genome.clone();
+        drop(p);
+
+        let net_arc = py_net.inner.clone();
+        py.allow_threads(|| {
+            let mut net_guard = net_arc
+                .write()
+                .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+            genome_clone.build_phenotype(&mut *net_guard);
+            Ok(())
+        })
+    }
+
+    /// Build HyperNEAT phenotype using a Substrate.
+    fn build_hyperneat_phenotype(
+        &self,
+        py: Python,
+        py_net: PyRef<PyNeuralNetwork>,
+        py_subst: PyRef<PySubstrate>,
+    ) -> PyResult<()> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        let genome = p
+            .genomes
+            .get(self.idx)
+            .ok_or_else(|| PyRuntimeError::new_err("invalid genome index"))?;
+        let genome_clone = genome.clone();
+        drop(p);
+
+        let net_arc = py_net.inner.clone();
+        let subst_arc = py_subst.inner.clone();
+        py.allow_threads(|| {
+            let mut net_guard = net_arc
+                .write()
+                .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+            let subst_guard = subst_arc
+                .read()
+                .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+            genome_clone.build_hyperneat_phenotype(&mut *net_guard, &*subst_guard);
+            Ok(())
+        })
     }
 }
 

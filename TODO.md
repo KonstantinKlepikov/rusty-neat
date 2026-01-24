@@ -92,9 +92,9 @@
       - [x] Подумать про освобождение GIL в тяжёлых операциях (use `py.allow_threads`) - сохранено в `research/gil_recomendation.md`.
 
     - Фаза 6 — Тесты и CI
-      - [ ] Добавить pytest smoke tests, взяв примеры из `cneat/MultiNEAT/examples` (TestNEAT_xor, TestHyperNEAT_xor и др.) и адаптировать их для Rust биндингов.
+      - [x] Добавить pytest smoke tests, взяв примеры из `cneat/MultiNEAT/examples` (TestNEAT_xor, TestHyperNEAT_xor и др.) и адаптировать их для Rust биндингов.
       - [ ] Добавить GitHub Actions job: `maturin build` → `pip install target/wheels/*.whl` → `pytest`.
-      - [ ] Маркировать тяжёлые/долгие тесты как `@pytest.mark.slow` или запускать в nightly workflow.
+      - [x] Маркировать тяжёлые/долгие тесты как `@pytest.mark.slow` или запускать в nightly workflow.
 
     - Фаза 7 — Release и совместимость
       - [ ] Выстроить политику по версии API и декларацию несовместимости pickles с C++ при наличии.
