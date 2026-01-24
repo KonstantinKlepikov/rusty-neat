@@ -129,6 +129,7 @@
 
       5) RNG (utility)
           - Методы: `Seed`, `TimeSeed`, `RandInt`, `RandFloat`, `RandFloatSigned`, `RandGaussSigned`, `Roulette`.
+          - NOTE: Отсутствует (не реализовано): `Seed`, `TimeSeed`, `RandFloatSigned`, `RandGaussSigned`, `Roulette`. Причина: в `rusty_neat::random` сейчас реализованы только `rand_float()` и `rand_int()`, поэтому в PyRNG экспортированы только они. Можно добавить недостающие методы в `rusty_neat::random` (например, `seed(u64)`, `time_seed()`, `rand_float_signed()`, `rand_gauss_signed()`, `roulette(weights: &[f64])`) и экспортировать их в PyRNG с соответствующими тестами и документацией.
 
       6) Дополнительно (низкий приоритет для 1.0, но полезно скоро):
           - Population: `Epoch`, `Tick`, `GetBestGenome`, `AccessGenomeByIndex` (можно отложить в 1.1 при необходимости).
@@ -136,7 +137,7 @@
 
 - [ ] Документация и примеры
   - [ ] Перенесите и адаптируйте документацию из оригинального `README.md` и примеры.
-  - [ ] Обновите `README.md` и `README_WEB.md` для Rust-версии.
+  - [ ] Обновите `README.md` для Rust-версии.
 
 - [ ] Автоматизация и CI
   - [x] Настройте тестирование и сборку через GitHub Actions (см. примеры в `.github/workflows`).

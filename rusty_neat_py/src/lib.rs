@@ -337,6 +337,44 @@ impl PyNeuralNetwork {
         }
     }
 
+    /// Construct network with given input/output dimensions
+    #[staticmethod]
+    fn with_dimensions(num_inputs: usize, num_outputs: usize) -> Self {
+        let mut net = rusty_neat::NeuralNetwork::new();
+        net.set_input_output_dimensions(num_inputs, num_outputs);
+        PyNeuralNetwork {
+            inner: Arc::new(RwLock::new(net)),
+        }
+    }
+
+    /// Number of inputs
+    fn num_inputs(&self) -> PyResult<usize> {
+        let nn = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(nn.num_inputs())
+    }
+
+    /// Number of outputs
+    fn num_outputs(&self) -> PyResult<usize> {
+        let nn = self
+            .inner
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        Ok(nn.num_outputs())
+    }
+
+    /// Reset network (clear neurons/connections and dimensions)
+    fn reset(&self) -> PyResult<()> {
+        let mut nn = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        nn.clear();
+        Ok(())
+    }
+
     /// Provide inputs (accepts any Python sequence convertible to Vec<f64>)
     fn input(&self, inputs: &PyAny) -> PyResult<()> {
         // Try NumPy first
@@ -1138,6 +1176,43 @@ impl PyParameters {
 
         Ok(())
     }
+
+    /// Save parameters to a JSON file using the same dict produced by `__getstate__`.
+    fn save(&self, path: &str) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let state = self.__getstate__(py);
+            let json = py
+                .import("json")
+                .map_err(|e| PyRuntimeError::new_err(format!("json import error: {}", e)))?;
+            let s = json
+                .call_method1("dumps", (state,))
+                .map_err(|e| PyRuntimeError::new_err(format!("json dumps error: {}", e)))?
+                .extract::<String>()
+                .map_err(|e| PyRuntimeError::new_err(format!("json dumps -> string: {}", e)))?;
+            let _ = py;
+            fs::write(path, s).map_err(|e| PyRuntimeError::new_err(format!("IO error: {}", e)))?;
+            Ok(())
+        })
+    }
+
+    /// Load parameters from a JSON file produced by `save` (or equivalent dict), delegating to `__setstate__`.
+    fn load(&mut self, path: &str) -> PyResult<()> {
+        if !Path::new(path).exists() {
+            return Err(PyRuntimeError::new_err("file not found"));
+        }
+        let data = fs::read_to_string(path)
+            .map_err(|e| PyRuntimeError::new_err(format!("IO error: {}", e)))?;
+        Python::with_gil(|py| {
+            let json = py
+                .import("json")
+                .map_err(|e| PyRuntimeError::new_err(format!("json import error: {}", e)))?;
+            let obj = json
+                .call_method1("loads", (data,))
+                .map_err(|e| PyRuntimeError::new_err(format!("json loads error: {}", e)))?;
+            self.__setstate__(obj)?;
+            Ok(())
+        })
+    }
 }
 
 /// Thin PyO3 wrapper for `rusty_neat::Substrate`
@@ -1866,6 +1941,19 @@ impl PyGenomeRef {
         Ok(p.genomes.get(self.idx).map(|g| g.fitness).unwrap_or(0.0))
     }
 
+    fn set_fitness(&mut self, v: f64) -> PyResult<()> {
+        let mut p = self
+            .population
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(g) = p.genomes.get_mut(self.idx) {
+            g.fitness = v;
+            Ok(())
+        } else {
+            Err(PyRuntimeError::new_err("invalid genome index"))
+        }
+    }
+
     fn get_adjusted_fitness(&self) -> PyResult<f64> {
         let p = self
             .population
@@ -1931,6 +2019,43 @@ impl PySpeciesRef {
         } else {
             Ok(PyList::empty(py).to_object(py))
         }
+    }
+
+    /// Return the leader of this species as a `PyGenomeRef` (highest fitness among members), or None.
+    fn get_leader(&self, py: Python) -> PyResult<Option<PyObject>> {
+        let p = self
+            .population
+            .read()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        if let Some(s) = p.species.get(self.idx) {
+            if s.members.is_empty() {
+                return Ok(None);
+            }
+
+            // find genome index in population with matching id and best fitness
+            let mut best_idx: Option<usize> = None;
+            let mut best_f = std::f64::NEG_INFINITY;
+            for &gid in &s.members {
+                for (i, g) in p.genomes.iter().enumerate() {
+                    if g.id == gid {
+                        if g.fitness > best_f {
+                            best_f = g.fitness;
+                            best_idx = Some(i);
+                        }
+                        break;
+                    }
+                }
+            }
+            drop(p);
+            if let Some(i) = best_idx {
+                let gref = PyGenomeRef {
+                    population: self.population.clone(),
+                    idx: i,
+                };
+                return Ok(Some(Py::new(py, gref)?.into_py(py)));
+            }
+        }
+        Ok(None)
     }
 
     fn get_age(&self) -> PyResult<u64> {
@@ -2326,6 +2451,31 @@ impl PyPopulation {
         }
         p.genomes.push(g);
         Ok(p.genomes.len() - 1)
+    }
+
+    /// Create a species containing genomes by their population indices.
+    /// Returns the index of the new species.
+    fn add_species(&mut self, members: Vec<usize>) -> PyResult<usize> {
+        let mut p = self
+            .inner
+            .write()
+            .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+        // build members as genome ids if indices valid
+        let mut ids: Vec<u64> = Vec::new();
+        for idx in members {
+            if let Some(g) = p.genomes.get(idx) {
+                ids.push(g.id);
+            }
+        }
+        let new_id = p.species.iter().map(|s| s.id).max().unwrap_or(0) + 1;
+        let sp = rusty_neat::species::Species {
+            id: new_id,
+            members: ids,
+            age: 0,
+            best_fitness: 0.0,
+        };
+        p.species.push(sp);
+        Ok(p.species.len() - 1)
     }
 
     /// Remove a genome at index `idx`. Returns True if removed.

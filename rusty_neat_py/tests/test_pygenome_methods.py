@@ -1,6 +1,3 @@
-import os
-import textwrap
-import io
 import pytest
 
 import rusty_neat_py
