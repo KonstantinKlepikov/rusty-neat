@@ -58,10 +58,15 @@ jobs:
           # install only dependencies, do not attempt to install the local package
           poetry install --no-interaction --no-ansi --no-root
 
-      - name: Build and install extension (maturin develop)
+      - name: Build wheel with maturin
         working-directory: rusty_neat_py
         run: |
-          poetry run maturin develop --release
+          poetry run maturin build --release
+
+      - name: Install wheel
+        working-directory: rusty_neat_py
+        run: |
+          pip install target/wheels/*.whl
 
       - name: Run pytest
         working-directory: rusty_neat_py

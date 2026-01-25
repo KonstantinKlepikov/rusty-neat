@@ -93,7 +93,7 @@
 
     - Фаза 6 — Тесты и CI
       - [x] Добавить pytest smoke tests, взяв примеры из `cneat/MultiNEAT/examples` (TestNEAT_xor, TestHyperNEAT_xor и др.) и адаптировать их для Rust биндингов.
-      - [ ] Добавить GitHub Actions job: `maturin build` → `pip install target/wheels/*.whl` → `pytest`.
+      - [x] Добавить GitHub Actions job: `maturin build` → `pip install target/wheels/*.whl` → `pytest`.
       - [x] Маркировать тяжёлые/долгие тесты как `@pytest.mark.slow` или запускать в nightly workflow.
 
     - Фаза 7 — Release и совместимость
