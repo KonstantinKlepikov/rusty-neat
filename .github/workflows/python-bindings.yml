@@ -66,7 +66,7 @@ jobs:
       - name: Install wheel in Poetry environment
         working-directory: rusty_neat_py
         run: |
-          poetry run pip install target/wheels/*.whl
+          poetry run pip install --no-index --find-links target/wheels rusty_neat_py
 
       - name: Run pytest
         working-directory: rusty_neat_py
