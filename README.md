@@ -18,3 +18,9 @@ ver = state.get('schema_version')
 if fmt == 'custom_cxx' or (fmt is None and looks_like_cxx(raw)):
     raise RuntimeError('C++ pickle detected: not supported. Use migration tools.')
 ```
+
+## dev
+
+- `cargo build --all --workspace && cargo test --all --workspace`
+- `cargo doc`
+- `cargo doc --open`

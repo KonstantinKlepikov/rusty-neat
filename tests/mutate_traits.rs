@@ -1,11 +1,3 @@
-// Tests for trait mutation and randomization.
-//
-// This test creates a minimal genome with a neuron, a link and a genome-level
-// gene, each carrying a trait `t1`. It then configures `Parameters` to force
-// mutation (mutation_prob = 1.0) and verifies that:
-//  - `mutate_neuron_traits`, `mutate_link_traits` and `mutate_genome_traits`
-//    report changes when run with a seeded RNG.
-//  - `randomize_traits` executes without panic and assigns proper types/ranges.
 mod common;
 use common::seeded_rng;
 use rusty_neat::genes::{ActivationFunction, Gene, LinkGene, NeuronGene, NeuronType, TraitValue};
@@ -13,6 +5,14 @@ use rusty_neat::genes::{TraitDetail, TraitParameters};
 use rusty_neat::genome::Genome;
 use rusty_neat::parameters::Parameters;
 
+// Test for trait mutation and randomization.
+//
+// This test creates a minimal genome with a neuron, a link and a genome-level
+// gene, each carrying a trait `t1`. It then configures `Parameters` to force
+// mutation (mutation_prob = 1.0) and verifies that:
+//  - `mutate_neuron_traits`, `mutate_link_traits` and `mutate_genome_traits`
+//    report changes when run with a seeded RNG.
+//  - `randomize_traits` executes without panic and assigns proper types/ranges.
 #[test]
 fn test_mutate_and_randomize_traits() {
     let mut params = Parameters::default();
@@ -96,10 +96,42 @@ fn test_mutate_and_randomize_traits() {
     let mut rng = seeded_rng(123);
 
     // Mutation should flip or change traits because prob=1.0
+    // Save old values and verify they changed after mutation
+    let old_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
+    let old_link_t1 = g.link_genes[0].traits.get("t1").cloned();
+    let old_genome_t1 = g.genome_gene.as_ref().and_then(|gg| gg.traits.get("t1").cloned());
+
     assert!(g.mutate_neuron_traits(&params, &mut rng));
     assert!(g.mutate_link_traits(&params, &mut rng));
     assert!(g.mutate_genome_traits(&params, &mut rng));
 
+    // check that values actually changed
+    let new_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
+    let new_link_t1 = g.link_genes[0].traits.get("t1").cloned();
+    let new_genome_t1 = g.genome_gene.as_ref().and_then(|gg| gg.traits.get("t1").cloned());
+
+    assert_ne!(old_neuron_t1, new_neuron_t1, "neuron trait t1 did not change");
+    assert_ne!(old_link_t1, new_link_t1, "link trait t1 did not change");
+    assert_ne!(old_genome_t1, new_genome_t1, "genome trait t1 did not change");
+
     // Randomize traits should not panic and should change values types appropriately
+    // Save values before randomize and ensure they change and have expected types
+    let pre_rand_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
+    let pre_rand_link_t1 = g.link_genes[0].traits.get("t1").cloned();
+    let pre_rand_genome_t1 = g.genome_gene.as_ref().and_then(|gg| gg.traits.get("t1").cloned());
+
     g.randomize_traits(&mut rng);
+
+    let post_rand_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
+    let post_rand_link_t1 = g.link_genes[0].traits.get("t1").cloned();
+    let post_rand_genome_t1 = g.genome_gene.as_ref().and_then(|gg| gg.traits.get("t1").cloned());
+
+    assert_ne!(pre_rand_neuron_t1, post_rand_neuron_t1, "neuron trait t1 did not change on randomize");
+    assert_ne!(pre_rand_link_t1, post_rand_link_t1, "link trait t1 did not change on randomize");
+    assert_ne!(pre_rand_genome_t1, post_rand_genome_t1, "genome trait t1 did not change on randomize");
+
+    // Types should remain appropriate (neuron: Float, link: Int, genome: Int)
+    assert!(matches!(post_rand_neuron_t1, Some(TraitValue::Float(_))), "neuron trait type changed");
+    assert!(matches!(post_rand_link_t1, Some(TraitValue::Int(_))), "link trait type changed");
+    assert!(matches!(post_rand_genome_t1, Some(TraitValue::Int(_))), "genome trait type changed");
 }

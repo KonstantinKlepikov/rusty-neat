@@ -36,7 +36,7 @@
 - [x] Покрытие тестами
   - [x] Для каждого переписанного модуля пишите модульные тесты на Rust, используя примеры из `cneat/MultiNEAT/examples`.
   - [x] Сравнивайте результаты работы Rust-версии с оригинальной C++.
-  - [ ] Рекомендуемые подпункты по приоритету:
+  - [x] Рекомендуемые подпункты по приоритету:
     - [x] Substrate / HyperNEAT helpers — unit-тесты для `get_max_dims`, `get_min_cppn_inputs`, `get_min_cppn_outputs`, `with_coords`, `set_neurons`, `print_info`.
     - [x] BuildHyperNEATPhenotype — быстрый smoke-test: детерминированный CPPN/phenotype, проверка количества связей, фильтрации по флагам и масштабирования весов (`max_weight_and_bias`).
     - [x] Traits behaviour — unit-тесты для `init_trait_map` и `mutate_trait_map`: replace vs perturb, clamping, dep_key/dep_values, roulette для set/string.
@@ -154,3 +154,108 @@
 4. Вспомогательные утилиты (рандомизация, сериализация)
 5. Публичный API и интеграция с внешними языками (Python, WASM)
 6. Документация и примеры
+
+## Чеклист ручной проверки проекта `rusty-neat`
+
+Ниже — упорядоченный чеклист для ручной проверки модулей на Rust, Rust‑тестов, Python‑биндингов и Python‑тестов. Порядок проверок даёт минимальную зависимую последовательность (сначала core crates, затем биндинги и тесты).
+
+### 1. Crates / сборка
+
+- [x] `cargo build --release` — билд успешен для всех crate'ов в workspace
+- [x] `cargo test` — базовые unit‑тесты Rust проходят (см. раздел Rust‑тесты)
+- [x] `poetry install` и `poetry run maturin build --release` в `rusty_neat_py` — сборка wheel проходит
+
+### 2. Порядок проверки модулей (Rust)
+
+1) `genes`
+   - [x] структуры (проверить поля)
+     - [x] `NeuronGene`
+       - [ ] не очень ясно, нужно ли вот это ( в оригинале этого нет) `/// Optional trait map for extra parameters (keeps arbitrary traits) pub traits: StdHashMap<String, TraitValue>,`
+     - [x] `LinkGene`
+       - [ ] аналогично `/// Optional trait map for extra parameters (hebb_rate, hebb_pre_rate, ...)
+    pub traits: StdHashMap<String, TraitValue>,`
+     - [x] `Gene`
+     - [x] `traits` map
+       - [ ] NOTE: реализован упрощенный трейт в виде маппинга int, float, str, bool
+   - [x] конструкторы/методы
+     - [x] `new`
+     - [x] `randomize_traits_map`
+     - [x] `set_weight` и т.п.
+   - [x] тесты (см. tests)
+     - [x] `mutate_traits`
+     - [x] `traits_behavior`
+
+2) `parameters`
+   - [ ] структура `Parameters` — проверить присутствие критичных полей (PopulationSize, min/max weights, HyperNEAT/ES поля: `DivisionThreshold`, `MaxDepth`, `IterationLevel`, `CPPN_Bias`, и т.д.)
+   - [ ] `Default` значения соответствуют ожиданиям
+   - [ ] чтение/запись параметров (если реализовано)
+
+3) `genome`
+   - [ ] структура `Genome` — ключевые поля (`neuron_genes`, `link_genes`, `genome_gene`, `num_inputs`, `num_outputs`)
+   - [ ] методы: `build_phenotype`, `build_hyperneat_phenotype`, `derive_phenotypic_changes`, `mutate_*`, `randomize_link_weights`, `randomize_traits` — вручную прогонять примеры/смоук
+   - [ ] проверка `Default`/конструкторов и корректного поведения при пустых данных
+
+4) `network` (Phenotype)
+   - [ ] `NeuralNetwork::new`, `add_neuron`, `add_connection`, `input`, `activate`, `output`, `flush`, `set_input_output_dimensions`
+   - [ ] консистентность `num_inputs/num_outputs` и позиционирования output нейронов
+
+5) `hyperneat` / `substrate`
+   - [ ] `Substrate::new`, `with_coords`, `get_min_cppn_inputs`, `get_min_cppn_outputs`, `get_max_dims`, `set_neurons`, `print_info`
+   - [ ] флаги: `allow_*`, `with_distance`, `leaky`, `query_weights_only`, `custom_connectivity`
+   - [ ] интеграция: `Genome::build_hyperneat_phenotype(net, subst)` — проверить на простых CPPN (см. тест `es_hyperneat_smoke.rs`)
+
+6) `population`, `species`, `innovation` (если используются)
+   - [ ] базовые методы: создание популяции, `epoch`/`tick`/`get_best_genome`, распределение в species
+   - [ ] интеграционные smoke-прогоны небольших population примеров
+
+7) `random` и утилиты
+   - [ ] RNG: `rand_float`, `rand_int`, (опционально `seed`, `roulette`) — проверить детерминированность при семени
+   - [ ] вспомогательные `utils::clamp`, `scale` и т.п.
+
+8) `serialization` / pickling
+   - [ ] функции `to_bincode/from_bincode`, `to_json/from_json` (если реализованы)
+   - [ ] `__getstate__/__setstate__` реализация в биндингах — проверить round‑trip
+   - [ ] убедиться, что в payload присутствуют `format` и `schema_version`
+
+### 3. Rust‑тесты (ручная проверка)
+
+- [ ] Запустить все тесты: `cargo test` — убедиться, что проходят unit‑тесты
+- [ ] Запустить специфичные smoke‑тесты: `cargo test --test es_hyperneat_smoke` (тесты, помеченные `#[ignore]` должны запускаться отдельно только при необходимости)
+- [ ] Проверить тесты из `tests/` папки: `parameters_traits_integration`, `traits_behavior`, `phenotype_behavior`, `mutate_*` — убедиться, что логика совпадает с ожиданиями
+
+### 4. Python‑биндинги (`rusty_neat_py`) — ручная проверка
+
+1) Сборка и установка
+   - [ ] `poetry install` и `poetry run maturin develop` — установка в dev‑окружение
+   - [ ] проверить `import rusty_neat_py` и базовый `help()`
+
+2) Экспортированные классы / API
+   - [ ] `PyGenome` / `PyNeuralNetwork` / `PyParameters` / `PySubstrate` / `PyPopulation` / `PyRNG` присутствуют
+   - [ ] конструкторы и базовые методы работают (создание, `BuildPhenotype`, `Input/Activate/Output`)
+   - [ ] методы, принимающие NumPy/`PyArray` и list, работают корректно
+
+3) Pickle / сериализация
+   - [ ] `__getstate__` возвращает dict с `format` и `schema_version` и `payload`
+   - [ ] `pickle.dumps` / `pickle.loads` round‑trip для `Parameters`/`Substrate` и простых `Genome` (smoke)
+   - [ ] при попытке загрузить C++‑pickle показывается дружелюбная ошибка и ссылка на `research/pickle.md`
+
+4) Поведение при GIL/параллелизме
+   - [ ] тяжёлые операции (например, `Population::epoch`) освобождают GIL при необходимости (`py.allow_threads`)
+
+### 5. Python‑тесты (ручная проверка)
+
+- [x] В `rusty_neat_py/tests` запустить `pytest` (в virtualenv/poetry env)
+- [x] smoke‑tests: `test_neat_xor_smoke.py`, `test_hyperneat_xor_smoke.py` — убедиться, что проходят
+- [x] тесты pickling (если есть) — `test_parameters_pickling.py`, `test_substrate_pickling.py`
+
+### 6. Релизные шаги проверки
+
+- [ ] Обновить `CHANGELOG.md` с чётким указанием breaking changes
+- [ ] Убедиться, что `pyproject.toml` / `Cargo.toml` имеют согласованную версию и метаданные
+- [ ] Собрать wheels через `poetry run maturin build --release` и локально установить для smoke‑проверки
+
+### 7. Примечания и советы при ручной проверке
+
+- При проблемах с десериализацией добавляйте вывод `schema_version` и первые несколько байт `payload` для диагностики.
+- Для ES‑HyperNEAT используйте небольшой детерминированный CPPN (см. `tests/common.rs::make_fixed_cppn`) чтобы быстро проверять поведение `build_hyperneat_phenotype`.
+- Тяжёлые эволюционные тесты помечайте в CI как `#[ignore]` или `@pytest.mark.slow` и запускайте только в nightly/workflow с большим бюджетом времени.

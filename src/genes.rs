@@ -1,9 +1,8 @@
-//! Gene definitions moved out of genome.rs
 use crate::utils::{clamp_f64, clamp_i64};
 use rand::prelude::*;
 use std::collections::HashMap as StdHashMap;
 
-/// Trait parameter details mirroring C++ TraitParameters (simplified)
+/// Trait parameter details (simplified)
 #[derive(Debug, Clone)]
 pub enum TraitDetail {
     Int {
@@ -32,15 +31,6 @@ pub enum TraitDetail {
     },
 }
 
-#[derive(Debug, Clone)]
-pub struct TraitParameters {
-    pub importance_coeff: f64,
-    pub mutation_prob: f64,
-    pub detail: TraitDetail,
-    pub dep_key: Option<String>,
-    pub dep_values: Vec<TraitValue>,
-}
-
 /// Trait value container (simplified)
 #[derive(Debug, Clone, PartialEq)]
 pub enum TraitValue {
@@ -50,7 +40,17 @@ pub enum TraitValue {
     Bool(bool),
 }
 
-/// Activation function type (copied from original C++ types)
+/// Trait parameters
+#[derive(Debug, Clone)]
+pub struct TraitParameters {
+    pub importance_coeff: f64,
+    pub mutation_prob: f64,
+    pub detail: TraitDetail,
+    pub dep_key: Option<String>,
+    pub dep_values: Vec<TraitValue>,
+}
+
+/// Activation function type
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ActivationFunction {
     SignedSigmoid,
@@ -69,7 +69,7 @@ pub enum ActivationFunction {
     Softplus,
 }
 
-/// Neuron type (copied from original C++ types)
+/// Neuron type
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NeuronType {
     Input,
@@ -78,9 +78,8 @@ pub enum NeuronType {
     Bias,
 }
 
-/// Simplified Gene struct mirroring core behavior from the C++ Gene class.
+/// Simplified Gene struct.
 ///
-/// Assumptions / simplifications vs original C++ implementation:
 /// - The full Trait / TraitParameters system from C++ is not ported here.
 ///   Instead `TraitValue` holds basic types (Int/Float/Str/Bool).
 /// - `InitTraits` in C++ uses detailed TraitParameters and RNG-based
@@ -114,6 +113,7 @@ impl Gene {
     }
 
     /// Mate traits with another parent. Simplified logic:
+    ///
     /// - If types mismatch, panic (mirrors C++ behaviour choice to error).
     /// - For numeric types we either pick one parent's value at random or
     ///   average them (50% chance each).
@@ -263,6 +263,7 @@ impl Default for Gene {
     }
 }
 
+/// Neuron gene
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeuronGene {
     // Unique identification number
@@ -474,13 +475,22 @@ impl Default for NeuronGene {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Link gene
+#[derive(Debug, Clone)]
 pub struct LinkGene {
+    /// These variables are initialized once and cannot be changed anymore
+    /// The IDs of the neurons that this link connects
     pub from_neuron_id: u64,
     pub to_neuron_id: u64,
+    /// The link's innovation ID
     pub innovation_id: u64,
+
+    /// This variable is modified during evolution
+    /// The weight of the connection
     pub weight: f64,
+    /// Is it recurrent?
     pub is_recurrent: bool,
+
     /// Optional trait map for extra parameters (hebb_rate, hebb_pre_rate, ...)
     pub traits: StdHashMap<String, TraitValue>,
 }
@@ -548,6 +558,11 @@ impl LinkGene {
     /// Set recurrent flag
     pub fn set_recurrent(&mut self, r: bool) {
         self.is_recurrent = r;
+    }
+
+    /// Check whether the link is looped recurrent (from == to)
+    pub fn is_looped_recurrent(&self) -> bool {
+        self.from_neuron_id == self.to_neuron_id
     }
 
     /// Helper: get a float trait by name
@@ -637,9 +652,32 @@ impl Default for LinkGene {
     }
 }
 
+// Implement equality and ordering based only on `innovation_id`, matching C++ semantics
+impl PartialEq for LinkGene {
+    fn eq(&self, other: &Self) -> bool {
+        self.innovation_id == other.innovation_id
+    }
+}
+
+impl Eq for LinkGene {}
+
+impl PartialOrd for LinkGene {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for LinkGene {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.innovation_id.cmp(&other.innovation_id)
+    }
+}
+
 // ----------------------
 // Helper functions: init/mutate trait maps using TraitParameters (C++-like)
 // ----------------------
+
+/// Roulette index
 fn roulette_index(probs: &Vec<f64>, rng: &mut impl Rng) -> usize {
     let total: f64 = probs.iter().sum();
     if total <= 0.0 {
@@ -661,6 +699,7 @@ fn roulette_index(probs: &Vec<f64>, rng: &mut impl Rng) -> usize {
     }
 }
 
+/// Init trait map
 fn init_trait_map(
     map: &mut StdHashMap<String, TraitValue>,
     tp: &StdHashMap<String, TraitParameters>,
@@ -703,6 +742,7 @@ fn init_trait_map(
     }
 }
 
+/// Mutate trait map
 fn mutate_trait_map(
     map: &mut StdHashMap<String, TraitValue>,
     tp: &StdHashMap<String, TraitParameters>,
