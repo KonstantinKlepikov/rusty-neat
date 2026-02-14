@@ -30,7 +30,8 @@ pub struct Parameters {
     pub normalize_genome_size: bool,
     /// Optional custom topology/trait constraints: should return true if genome FAILS constraint
     /// Stored as Option/Arc to avoid requiring Clone/Debug on closure.
-    pub custom_constraints: Option<std::sync::Arc<dyn Fn(&crate::genome::Genome) -> bool + Send + Sync>>,
+    pub custom_constraints:
+        Option<std::sync::Arc<dyn Fn(&crate::genome::Genome) -> bool + Send + Sync>>,
 
     // GA parameters
     /// Age treshold, meaning if a species is below it, it is considered young
@@ -77,7 +78,6 @@ pub struct Parameters {
     pub tournament_size: u32,
     /// Fraction of individuals copied unchanged
     pub elite_fraction: f64,
-
 
     // Phased search parameters
     /// Using phased search
@@ -395,7 +395,8 @@ impl Default for Parameters {
             activationfunction_relu_prob: 0.0,
             activationfunction_softplus_prob: 0.0,
 
-            // FIXME: Legacy vector: UnsignedSigmoid probability = 1.0 at index 1 (C++ default mapping)
+            // FIXME: Legacy vector: UnsignedSigmoid probability = 1.0
+            // at index 1 (C++ default mapping)
             activation_function_probs: vec![
                 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             ],
@@ -403,7 +404,7 @@ impl Default for Parameters {
             // FIXME: Alias for legacy time-constant field
             timeconstant_mutation_max_power: 0.0,
 
-              mutate_neuron_time_constants_prob: 0.0,
+            mutate_neuron_time_constants_prob: 0.0,
             mutate_neuron_biases_prob: 0.0,
 
             min_neuron_time_constant: 0.0,

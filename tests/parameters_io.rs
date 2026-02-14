@@ -3,6 +3,8 @@ use std::fs;
 
 #[test]
 fn test_reset_restores_defaults() {
+    // Verify that `reset()` restores parameters to their default values.
+    // Change several fields, call `reset()`, and compare with `Parameters::default()`.
     let mut p = Parameters::default();
     // change several fields
     p.population_size = 1234;
@@ -20,6 +22,8 @@ fn test_reset_restores_defaults() {
 
 #[test]
 fn test_load_from_str_parses_values() {
+    // Verify parsing of a string representation via `load_from_str()`.
+    // Construct a minimal section with a few keys and ensure values are applied correctly.
     let mut p = Parameters::default();
     let data = "NEAT_ParametersStart\nPopulationSize 42\nSpeciation false\nConstraintTrials 7\nNEAT_ParametersEnd\n";
 
@@ -32,16 +36,20 @@ fn test_load_from_str_parses_values() {
 
 #[test]
 fn test_save_and_load_file_roundtrip() {
+    // Round-trip save/load test: write parameters to a file via `save()`,
+    // then read them back via `load()` and verify field equality.
     let mut p = Parameters::default();
     p.population_size = 9001;
     p.speciation = false;
     p.constraint_trials = 11;
 
-    let tmp_name = format!("rusty_neat_params_test_{}.txt",
+    let tmp_name = format!(
+        "rusty_neat_params_test_{}.txt",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_nanos());
+            .as_nanos(),
+    );
     let tmp_path = std::env::temp_dir().join(&tmp_name);
 
     // save to file
