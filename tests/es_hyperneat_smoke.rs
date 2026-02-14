@@ -1,7 +1,7 @@
-use rusty_neat::Substrate;
-use rusty_neat::NeuralNetwork;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use rusty_neat::NeuralNetwork;
+use rusty_neat::Substrate;
 
 mod common;
 use common::make_fixed_cppn;
@@ -40,6 +40,14 @@ fn es_hyperneat_smoke_test() {
     g.build_hyperneat_phenotype(&mut net, &subst);
 
     // Basic sanity checks: network input/output dimensions should match substrate
-    assert_eq!(net.num_inputs(), subst.input_coords.len(), "num_inputs mismatch");
-    assert_eq!(net.num_outputs(), subst.output_coords.len(), "num_outputs mismatch");
+    assert_eq!(
+        net.num_inputs(),
+        subst.input_coords.len(),
+        "num_inputs mismatch"
+    );
+    assert_eq!(
+        net.num_outputs(),
+        subst.output_coords.len(),
+        "num_outputs mismatch"
+    );
 }

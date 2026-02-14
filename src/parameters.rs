@@ -329,7 +329,6 @@ impl Default for Parameters {
             elite_fraction: 0.000001,
             constraint_trials: 2000000,
 
-
             phased_searching: false,
             delta_coding: false,
             simplifying_phase_mpc_treshold: 20,
@@ -481,7 +480,10 @@ impl Parameters {
             i += 1;
         }
         if i >= tokens.len() {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "NEAT_ParametersStart not found"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "NEAT_ParametersStart not found",
+            ));
         }
         i += 1;
 
@@ -491,132 +493,716 @@ impl Parameters {
                 break;
             }
             i += 1;
-            if i >= tokens.len() { break; }
+            if i >= tokens.len() {
+                break;
+            }
             match s {
-                "PopulationSize" => { self.population_size = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Speciation" => { self.speciation = parse_bool(tokens[i]); i+=1; }
-                "DynamicCompatibility" => { self.dynamic_compatibility = parse_bool(tokens[i]); i+=1; }
-                "MinSpecies" => { self.min_species = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxSpecies" => { self.max_species = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "InnovationsForever" => { self.innovations_forever = parse_bool(tokens[i]); i+=1; }
-                "AllowClones" => { self.allow_clones = parse_bool(tokens[i]); i+=1; }
-                "NormalizeGenomeSize" => { self.normalize_genome_size = parse_bool(tokens[i]); i+=1; }
-                "ConstraintTrials" => { self.constraint_trials = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "YoungAgeTreshold" => { self.young_age_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "YoungAgeFitnessBoost" => { self.young_age_fitness_boost = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "SpeciesMaxStagnation" => { self.species_max_stagnation = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "StagnationDelta" => { self.stagnation_delta = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "OldAgeTreshold" => { self.old_age_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "OldAgePenalty" => { self.old_age_penalty = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "DetectCompetetiveCoevolutionStagnation" => { self.detect_competetive_coevolution_stagnation = parse_bool(tokens[i]); i+=1; }
-                "KillWorstSpeciesEach" => { self.kill_worst_species_each = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "KillWorstAge" => { self.kill_worst_age = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "SurvivalRate" => { self.survival_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CrossoverRate" => { self.crossover_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "OverallMutationRate" => { self.overall_mutation_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "InterspeciesCrossoverRate" => { self.interspecies_crossover_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MultipointCrossoverRate" => { self.multipoint_crossover_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "PreferFitterParentRate" => { self.prefer_fitter_parent_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "RouletteWheelSelection" => { self.roulette_wheel_selection = parse_bool(tokens[i]); i+=1; }
-                "TournamentSelection" => { self.tournament_selection = parse_bool(tokens[i]); i+=1; }
-                "PhasedSearching" => { self.phased_searching = parse_bool(tokens[i]); i+=1; }
-                "DeltaCoding" => { self.delta_coding = parse_bool(tokens[i]); i+=1; }
-                "SimplifyingPhaseMPCTreshold" => { self.simplifying_phase_mpc_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "SimplifyingPhaseStagnationTreshold" => { self.simplifying_phase_stagnation_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ComplexityFloorGenerations" => { self.complexity_floor_generations = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_K" => { self.novelty_search_k = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_P_min" => { self.novelty_search_p_min = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Dynamic_Pmin" => { self.novelty_search_dynamic_pmin = parse_bool(tokens[i]); i+=1; }
-                "NoveltySearch_No_Archiving_Stagnation_Treshold" => { self.novelty_search_no_archiving_stagnation_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Pmin_lowering_multiplier" => { self.novelty_search_pmin_lowering_multiplier = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Pmin_min" => { self.novelty_search_pmin_min = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Quick_Archiving_Min_Evaluations" => { self.novelty_search_quick_archiving_min_evaluations = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Pmin_raising_multiplier" => { self.novelty_search_pmin_raising_multiplier = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "NoveltySearch_Recompute_Sparseness_Each" => { self.novelty_search_recompute_sparseness_each = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateAddNeuronProb" => { self.mutate_add_neuron_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "SplitRecurrent" => { self.split_recurrent = parse_bool(tokens[i]); i+=1; }
-                "SplitLoopedRecurrent" => { self.split_looped_recurrent = parse_bool(tokens[i]); i+=1; }
-                "MutateAddLinkProb" => { self.mutate_add_link_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateAddLinkFromBiasProb" => { self.mutate_add_link_from_bias_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateRemLinkProb" => { self.mutate_rem_link_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateRemSimpleNeuronProb" => { self.mutate_rem_simple_neuron_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "LinkTries" => { self.link_tries = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxLinks" => { self.max_links = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxNeurons" => { self.max_neurons = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "RecurrentProb" => { self.recurrent_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "RecurrentLoopProb" => { self.recurrent_loop_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateWeightsProb" => { self.mutate_weights_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateWeightsSevereProb" => { self.mutate_weights_severe_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "WeightMutationRate" => { self.weight_mutation_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "WeightMutationMaxPower" => { self.weight_mutation_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "WeightReplacementRate" => { self.weight_replacement_rate = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "WeightReplacementMaxPower" => { self.weight_replacement_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxWeight" => { self.max_weight = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinWeight" => { self.min_weight = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateActivationAProb" => { self.mutate_activation_a_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateActivationBProb" => { self.mutate_activation_b_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationAMutationMaxPower" => { self.activation_a_mutation_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationBMutationMaxPower" => { self.activation_b_mutation_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinActivationA" => { self.min_activation_a = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxActivationA" => { self.max_activation_a = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinActivationB" => { self.min_activation_b = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxActivationB" => { self.max_activation_b = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "TimeConstantMutationMaxPower" => { self.time_constant_mutation_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "BiasMutationMaxPower" => { self.bias_mutation_max_power = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateNeuronTimeConstantsProb" => { self.mutate_neuron_time_constants_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MutateNeuronBiasesProb" => { self.mutate_neuron_biases_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinNeuronTimeConstant" => { self.min_neuron_time_constant = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxNeuronTimeConstant" => { self.max_neuron_time_constant = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinNeuronBias" => { self.min_neuron_bias = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxNeuronBias" => { self.max_neuron_bias = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_SignedSigmoid_Prob" => { self.activationfunction_signedsigmoid_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_UnsignedSigmoid_Prob" => { self.activationfunction_unsignedsigmoid_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_Tanh_Prob" => { self.activationfunction_tanh_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_TanhCubic_Prob" => { self.activationfunction_tanhcubic_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_SignedStep_Prob" => { self.activationfunction_signedstep_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_UnsignedStep_Prob" => { self.activationfunction_unsignedstep_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_SignedGauss_Prob" => { self.activationfunction_signedgauss_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_UnsignedGauss_Prob" => { self.activationfunction_unsignedgauss_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_Abs_Prob" => { self.activationfunction_abs_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_SignedSine_Prob" => { self.activationfunction_signedsine_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_UnsignedSine_Prob" => { self.activationfunction_unsignedsine_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_Linear_Prob" => { self.activationfunction_linear_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_Relu_Prob" => { self.activationfunction_relu_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunction_Softplus_Prob" => { self.activationfunction_softplus_prob = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "DontUseBiasNeuron" => { self.dont_use_bias_neuron = parse_bool(tokens[i]); i+=1; }
-                "AllowLoops" => { self.allow_loops = parse_bool(tokens[i]); i+=1; }
-                "ArchiveEnforcement" => { self.archive_enforcement = parse_bool(tokens[i]); i+=1; }
-                "DisjointCoeff" => { self.disjoint_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ExcessCoeff" => { self.excess_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "WeightDiffCoeff" => { self.weight_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationADiffCoeff" => { self.activation_a_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationBDiffCoeff" => { self.activation_b_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "TimeConstantDiffCoeff" => { self.time_constant_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "BiasDiffCoeff" => { self.bias_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "ActivationFunctionDiffCoeff" => { self.activation_function_diff_coeff = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CompatTreshold" => { self.compat_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinCompatTreshold" => { self.min_compat_treshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CompatTresholdModifier" => { self.compat_treshold_modifier = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CompatTreshChangeInterval_Generations" => { self.compat_tresh_change_interval_generations = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CompatTreshChangeInterval_Evaluations" => { self.compat_tresh_change_interval_evaluations = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MinDeltaCompatEqualGenomes" => { self.min_delta_compat_equal_genomes = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "DivisionThreshold" => { self.division_threshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "VarianceThreshold" => { self.variance_threshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "BandThreshold" => { self.band_threshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "InitialDepth" => { self.initial_depth = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "MaxDepth" => { self.max_depth = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "IterationLevel" => { self.iteration_level = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "TournamentSize" => { self.tournament_size = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "CPPN_Bias" => { self.cppn_bias = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Width" => { self.width = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Height" => { self.height = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Qtree_X" => { self.qtree_x = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Qtree_Y" => { self.qtree_y = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "Leo" => { self.leo = parse_bool(tokens[i]); i+=1; }
-                "GeometrySeed" => { self.geometry_seed = parse_bool(tokens[i]); i+=1; }
-                "LeoThreshold" => { self.leo_threshold = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
-                "LeoSeed" => { self.leo_seed = parse_bool(tokens[i]); i+=1; }
-                "Elitism" => { self.elite_fraction = tokens[i].parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?; i+=1; }
+                "PopulationSize" => {
+                    self.population_size = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Speciation" => {
+                    self.speciation = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "DynamicCompatibility" => {
+                    self.dynamic_compatibility = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "MinSpecies" => {
+                    self.min_species = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxSpecies" => {
+                    self.max_species = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "InnovationsForever" => {
+                    self.innovations_forever = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "AllowClones" => {
+                    self.allow_clones = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "NormalizeGenomeSize" => {
+                    self.normalize_genome_size = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "ConstraintTrials" => {
+                    self.constraint_trials = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "YoungAgeTreshold" => {
+                    self.young_age_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "YoungAgeFitnessBoost" => {
+                    self.young_age_fitness_boost = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "SpeciesMaxStagnation" => {
+                    self.species_max_stagnation = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "StagnationDelta" => {
+                    self.stagnation_delta = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "OldAgeTreshold" => {
+                    self.old_age_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "OldAgePenalty" => {
+                    self.old_age_penalty = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "DetectCompetetiveCoevolutionStagnation" => {
+                    self.detect_competetive_coevolution_stagnation = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "KillWorstSpeciesEach" => {
+                    self.kill_worst_species_each = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "KillWorstAge" => {
+                    self.kill_worst_age = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "SurvivalRate" => {
+                    self.survival_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CrossoverRate" => {
+                    self.crossover_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "OverallMutationRate" => {
+                    self.overall_mutation_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "InterspeciesCrossoverRate" => {
+                    self.interspecies_crossover_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MultipointCrossoverRate" => {
+                    self.multipoint_crossover_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "PreferFitterParentRate" => {
+                    self.prefer_fitter_parent_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "RouletteWheelSelection" => {
+                    self.roulette_wheel_selection = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "TournamentSelection" => {
+                    self.tournament_selection = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "PhasedSearching" => {
+                    self.phased_searching = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "DeltaCoding" => {
+                    self.delta_coding = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "SimplifyingPhaseMPCTreshold" => {
+                    self.simplifying_phase_mpc_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "SimplifyingPhaseStagnationTreshold" => {
+                    self.simplifying_phase_stagnation_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ComplexityFloorGenerations" => {
+                    self.complexity_floor_generations = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_K" => {
+                    self.novelty_search_k = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_P_min" => {
+                    self.novelty_search_p_min = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Dynamic_Pmin" => {
+                    self.novelty_search_dynamic_pmin = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "NoveltySearch_No_Archiving_Stagnation_Treshold" => {
+                    self.novelty_search_no_archiving_stagnation_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Pmin_lowering_multiplier" => {
+                    self.novelty_search_pmin_lowering_multiplier = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Pmin_min" => {
+                    self.novelty_search_pmin_min = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Quick_Archiving_Min_Evaluations" => {
+                    self.novelty_search_quick_archiving_min_evaluations = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Pmin_raising_multiplier" => {
+                    self.novelty_search_pmin_raising_multiplier = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "NoveltySearch_Recompute_Sparseness_Each" => {
+                    self.novelty_search_recompute_sparseness_each = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateAddNeuronProb" => {
+                    self.mutate_add_neuron_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "SplitRecurrent" => {
+                    self.split_recurrent = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "SplitLoopedRecurrent" => {
+                    self.split_looped_recurrent = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "MutateAddLinkProb" => {
+                    self.mutate_add_link_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateAddLinkFromBiasProb" => {
+                    self.mutate_add_link_from_bias_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateRemLinkProb" => {
+                    self.mutate_rem_link_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateRemSimpleNeuronProb" => {
+                    self.mutate_rem_simple_neuron_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "LinkTries" => {
+                    self.link_tries = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxLinks" => {
+                    self.max_links = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxNeurons" => {
+                    self.max_neurons = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "RecurrentProb" => {
+                    self.recurrent_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "RecurrentLoopProb" => {
+                    self.recurrent_loop_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateWeightsProb" => {
+                    self.mutate_weights_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateWeightsSevereProb" => {
+                    self.mutate_weights_severe_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "WeightMutationRate" => {
+                    self.weight_mutation_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "WeightMutationMaxPower" => {
+                    self.weight_mutation_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "WeightReplacementRate" => {
+                    self.weight_replacement_rate = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "WeightReplacementMaxPower" => {
+                    self.weight_replacement_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxWeight" => {
+                    self.max_weight = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinWeight" => {
+                    self.min_weight = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateActivationAProb" => {
+                    self.mutate_activation_a_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateActivationBProb" => {
+                    self.mutate_activation_b_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationAMutationMaxPower" => {
+                    self.activation_a_mutation_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationBMutationMaxPower" => {
+                    self.activation_b_mutation_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinActivationA" => {
+                    self.min_activation_a = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxActivationA" => {
+                    self.max_activation_a = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinActivationB" => {
+                    self.min_activation_b = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxActivationB" => {
+                    self.max_activation_b = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "TimeConstantMutationMaxPower" => {
+                    self.time_constant_mutation_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "BiasMutationMaxPower" => {
+                    self.bias_mutation_max_power = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateNeuronTimeConstantsProb" => {
+                    self.mutate_neuron_time_constants_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MutateNeuronBiasesProb" => {
+                    self.mutate_neuron_biases_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinNeuronTimeConstant" => {
+                    self.min_neuron_time_constant = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxNeuronTimeConstant" => {
+                    self.max_neuron_time_constant = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinNeuronBias" => {
+                    self.min_neuron_bias = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxNeuronBias" => {
+                    self.max_neuron_bias = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_SignedSigmoid_Prob" => {
+                    self.activationfunction_signedsigmoid_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_UnsignedSigmoid_Prob" => {
+                    self.activationfunction_unsignedsigmoid_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_Tanh_Prob" => {
+                    self.activationfunction_tanh_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_TanhCubic_Prob" => {
+                    self.activationfunction_tanhcubic_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_SignedStep_Prob" => {
+                    self.activationfunction_signedstep_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_UnsignedStep_Prob" => {
+                    self.activationfunction_unsignedstep_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_SignedGauss_Prob" => {
+                    self.activationfunction_signedgauss_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_UnsignedGauss_Prob" => {
+                    self.activationfunction_unsignedgauss_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_Abs_Prob" => {
+                    self.activationfunction_abs_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_SignedSine_Prob" => {
+                    self.activationfunction_signedsine_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_UnsignedSine_Prob" => {
+                    self.activationfunction_unsignedsine_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_Linear_Prob" => {
+                    self.activationfunction_linear_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_Relu_Prob" => {
+                    self.activationfunction_relu_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunction_Softplus_Prob" => {
+                    self.activationfunction_softplus_prob = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "DontUseBiasNeuron" => {
+                    self.dont_use_bias_neuron = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "AllowLoops" => {
+                    self.allow_loops = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "ArchiveEnforcement" => {
+                    self.archive_enforcement = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "DisjointCoeff" => {
+                    self.disjoint_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ExcessCoeff" => {
+                    self.excess_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "WeightDiffCoeff" => {
+                    self.weight_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationADiffCoeff" => {
+                    self.activation_a_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationBDiffCoeff" => {
+                    self.activation_b_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "TimeConstantDiffCoeff" => {
+                    self.time_constant_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "BiasDiffCoeff" => {
+                    self.bias_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "ActivationFunctionDiffCoeff" => {
+                    self.activation_function_diff_coeff = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CompatTreshold" => {
+                    self.compat_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinCompatTreshold" => {
+                    self.min_compat_treshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CompatTresholdModifier" => {
+                    self.compat_treshold_modifier = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CompatTreshChangeInterval_Generations" => {
+                    self.compat_tresh_change_interval_generations = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CompatTreshChangeInterval_Evaluations" => {
+                    self.compat_tresh_change_interval_evaluations = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MinDeltaCompatEqualGenomes" => {
+                    self.min_delta_compat_equal_genomes = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "DivisionThreshold" => {
+                    self.division_threshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "VarianceThreshold" => {
+                    self.variance_threshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "BandThreshold" => {
+                    self.band_threshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "InitialDepth" => {
+                    self.initial_depth = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "MaxDepth" => {
+                    self.max_depth = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "IterationLevel" => {
+                    self.iteration_level = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "TournamentSize" => {
+                    self.tournament_size = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "CPPN_Bias" => {
+                    self.cppn_bias = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Width" => {
+                    self.width = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Height" => {
+                    self.height = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Qtree_X" => {
+                    self.qtree_x = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Qtree_Y" => {
+                    self.qtree_y = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "Leo" => {
+                    self.leo = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "GeometrySeed" => {
+                    self.geometry_seed = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "LeoThreshold" => {
+                    self.leo_threshold = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
+                "LeoSeed" => {
+                    self.leo_seed = parse_bool(tokens[i]);
+                    i += 1;
+                }
+                "Elitism" => {
+                    self.elite_fraction = tokens[i]
+                        .parse()
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    i += 1;
+                }
                 _ => { /* unknown token: skip */ }
             }
         }
@@ -636,13 +1222,40 @@ impl Parameters {
 
         wln!("NEAT_ParametersStart");
         wln!("PopulationSize {}", self.population_size);
-        wln!("Speciation {}", if self.speciation {"true"} else {"false"});
-        wln!("DynamicCompatibility {}", if self.dynamic_compatibility {"true"} else {"false"});
+        wln!(
+            "Speciation {}",
+            if self.speciation { "true" } else { "false" }
+        );
+        wln!(
+            "DynamicCompatibility {}",
+            if self.dynamic_compatibility {
+                "true"
+            } else {
+                "false"
+            }
+        );
         wln!("MinSpecies {}", self.min_species);
         wln!("MaxSpecies {}", self.max_species);
-        wln!("InnovationsForever {}", if self.innovations_forever {"true"} else {"false"});
-        wln!("AllowClones {}", if self.allow_clones {"true"} else {"false"});
-        wln!("NormalizeGenomeSize {}", if self.normalize_genome_size {"true"} else {"false"});
+        wln!(
+            "InnovationsForever {}",
+            if self.innovations_forever {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "AllowClones {}",
+            if self.allow_clones { "true" } else { "false" }
+        );
+        wln!(
+            "NormalizeGenomeSize {}",
+            if self.normalize_genome_size {
+                "true"
+            } else {
+                "false"
+            }
+        );
         wln!("ConstraintTrials {}", self.constraint_trials);
         wln!("YoungAgeTreshold {}", self.young_age_treshold);
         wln!("YoungAgeFitnessBoost {:.20}", self.young_age_fitness_boost);
@@ -650,116 +1263,329 @@ impl Parameters {
         wln!("StagnationDelta {:.20}", self.stagnation_delta);
         wln!("OldAgeTreshold {}", self.old_age_treshold);
         wln!("OldAgePenalty {:.20}", self.old_age_penalty);
-        wln!("DetectCompetetiveCoevolutionStagnation {}", if self.detect_competetive_coevolution_stagnation {"true"} else {"false"});
+        wln!(
+            "DetectCompetetiveCoevolutionStagnation {}",
+            if self.detect_competetive_coevolution_stagnation {
+                "true"
+            } else {
+                "false"
+            }
+        );
         wln!("KillWorstSpeciesEach {}", self.kill_worst_species_each);
         wln!("KillWorstAge {}", self.kill_worst_age);
         wln!("SurvivalRate {:.20}", self.survival_rate);
         wln!("CrossoverRate {:.20}", self.crossover_rate);
         wln!("OverallMutationRate {:.20}", self.overall_mutation_rate);
-        wln!("InterspeciesCrossoverRate {:.20}", self.interspecies_crossover_rate);
-        wln!("MultipointCrossoverRate {:.20}", self.multipoint_crossover_rate);
-        wln!("PreferFitterParentRate {:.20}", self.prefer_fitter_parent_rate);
-        wln!("RouletteWheelSelection {}", if self.roulette_wheel_selection {"true"} else {"false"});
-        wln!("PhasedSearching {}", if self.phased_searching {"true"} else {"false"});
-        wln!("DeltaCoding {}", if self.delta_coding {"true"} else {"false"});
-        wln!("SimplifyingPhaseMPCTreshold {}", self.simplifying_phase_mpc_treshold);
-        wln!("SimplifyingPhaseStagnationTreshold {}", self.simplifying_phase_stagnation_treshold);
-        wln!("ComplexityFloorGenerations {}", self.complexity_floor_generations);
+        wln!(
+            "InterspeciesCrossoverRate {:.20}",
+            self.interspecies_crossover_rate
+        );
+        wln!(
+            "MultipointCrossoverRate {:.20}",
+            self.multipoint_crossover_rate
+        );
+        wln!(
+            "PreferFitterParentRate {:.20}",
+            self.prefer_fitter_parent_rate
+        );
+        wln!(
+            "RouletteWheelSelection {}",
+            if self.roulette_wheel_selection {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "PhasedSearching {}",
+            if self.phased_searching {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "DeltaCoding {}",
+            if self.delta_coding { "true" } else { "false" }
+        );
+        wln!(
+            "SimplifyingPhaseMPCTreshold {}",
+            self.simplifying_phase_mpc_treshold
+        );
+        wln!(
+            "SimplifyingPhaseStagnationTreshold {}",
+            self.simplifying_phase_stagnation_treshold
+        );
+        wln!(
+            "ComplexityFloorGenerations {}",
+            self.complexity_floor_generations
+        );
         wln!("NoveltySearch_K {}", self.novelty_search_k);
         wln!("NoveltySearch_P_min {:.20}", self.novelty_search_p_min);
-        wln!("NoveltySearch_Dynamic_Pmin {}", if self.novelty_search_dynamic_pmin {"true"} else {"false"});
-        wln!("NoveltySearch_No_Archiving_Stagnation_Treshold {}", self.novelty_search_no_archiving_stagnation_treshold);
-        wln!("NoveltySearch_Pmin_lowering_multiplier {:.20}", self.novelty_search_pmin_lowering_multiplier);
-        wln!("NoveltySearch_Pmin_min {:.20}", self.novelty_search_pmin_min);
-        wln!("NoveltySearch_Quick_Archiving_Min_Evaluations {}", self.novelty_search_quick_archiving_min_evaluations);
-        wln!("NoveltySearch_Pmin_raising_multiplier {:.20}", self.novelty_search_pmin_raising_multiplier);
-        wln!("NoveltySearch_Recompute_Sparseness_Each {}", self.novelty_search_recompute_sparseness_each);
+        wln!(
+            "NoveltySearch_Dynamic_Pmin {}",
+            if self.novelty_search_dynamic_pmin {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "NoveltySearch_No_Archiving_Stagnation_Treshold {}",
+            self.novelty_search_no_archiving_stagnation_treshold
+        );
+        wln!(
+            "NoveltySearch_Pmin_lowering_multiplier {:.20}",
+            self.novelty_search_pmin_lowering_multiplier
+        );
+        wln!(
+            "NoveltySearch_Pmin_min {:.20}",
+            self.novelty_search_pmin_min
+        );
+        wln!(
+            "NoveltySearch_Quick_Archiving_Min_Evaluations {}",
+            self.novelty_search_quick_archiving_min_evaluations
+        );
+        wln!(
+            "NoveltySearch_Pmin_raising_multiplier {:.20}",
+            self.novelty_search_pmin_raising_multiplier
+        );
+        wln!(
+            "NoveltySearch_Recompute_Sparseness_Each {}",
+            self.novelty_search_recompute_sparseness_each
+        );
         wln!("MutateAddNeuronProb {:.20}", self.mutate_add_neuron_prob);
-        wln!("SplitRecurrent {}", if self.split_recurrent {"true"} else {"false"});
-        wln!("SplitLoopedRecurrent {}", if self.split_looped_recurrent {"true"} else {"false"});
+        wln!(
+            "SplitRecurrent {}",
+            if self.split_recurrent {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "SplitLoopedRecurrent {}",
+            if self.split_looped_recurrent {
+                "true"
+            } else {
+                "false"
+            }
+        );
         wln!("NeuronTries {}", self.neuron_tries);
         wln!("MutateAddLinkProb {:.20}", self.mutate_add_link_prob);
-        wln!("MutateAddLinkFromBiasProb {:.20}", self.mutate_add_link_from_bias_prob);
+        wln!(
+            "MutateAddLinkFromBiasProb {:.20}",
+            self.mutate_add_link_from_bias_prob
+        );
         wln!("MutateRemLinkProb {:.20}", self.mutate_rem_link_prob);
-        wln!("MutateRemSimpleNeuronProb {:.20}", self.mutate_rem_simple_neuron_prob);
+        wln!(
+            "MutateRemSimpleNeuronProb {:.20}",
+            self.mutate_rem_simple_neuron_prob
+        );
         wln!("LinkTries {}", self.link_tries);
         wln!("MaxLinks {}", self.max_links);
         wln!("MaxNeurons {}", self.max_neurons);
         wln!("RecurrentProb {:.20}", self.recurrent_prob);
         wln!("RecurrentLoopProb {:.20}", self.recurrent_loop_prob);
         wln!("MutateWeightsProb {:.20}", self.mutate_weights_prob);
-        wln!("MutateWeightsSevereProb {:.20}", self.mutate_weights_severe_prob);
+        wln!(
+            "MutateWeightsSevereProb {:.20}",
+            self.mutate_weights_severe_prob
+        );
         wln!("WeightMutationRate {:.20}", self.weight_mutation_rate);
-        wln!("WeightMutationMaxPower {:.20}", self.weight_mutation_max_power);
+        wln!(
+            "WeightMutationMaxPower {:.20}",
+            self.weight_mutation_max_power
+        );
         wln!("WeightReplacementRate {:.20}", self.weight_replacement_rate);
-        wln!("WeightReplacementMaxPower {:.20}", self.weight_replacement_max_power);
+        wln!(
+            "WeightReplacementMaxPower {:.20}",
+            self.weight_replacement_max_power
+        );
         wln!("MaxWeight {:.20}", self.max_weight);
         wln!("MinWeight {:.20}", self.min_weight);
-        wln!("MutateActivationAProb {:.20}", self.mutate_activation_a_prob);
-        wln!("MutateActivationBProb {:.20}", self.mutate_activation_b_prob);
-        wln!("ActivationAMutationMaxPower {:.20}", self.activation_a_mutation_max_power);
-        wln!("ActivationBMutationMaxPower {:.20}", self.activation_b_mutation_max_power);
-        wln!("TimeConstantMutationMaxPower {:.20}", self.time_constant_mutation_max_power);
+        wln!(
+            "MutateActivationAProb {:.20}",
+            self.mutate_activation_a_prob
+        );
+        wln!(
+            "MutateActivationBProb {:.20}",
+            self.mutate_activation_b_prob
+        );
+        wln!(
+            "ActivationAMutationMaxPower {:.20}",
+            self.activation_a_mutation_max_power
+        );
+        wln!(
+            "ActivationBMutationMaxPower {:.20}",
+            self.activation_b_mutation_max_power
+        );
+        wln!(
+            "TimeConstantMutationMaxPower {:.20}",
+            self.time_constant_mutation_max_power
+        );
         wln!("BiasMutationMaxPower {:.20}", self.bias_mutation_max_power);
         wln!("MinActivationA {:.20}", self.min_activation_a);
         wln!("MaxActivationA {:.20}", self.max_activation_a);
         wln!("MinActivationB {:.20}", self.min_activation_b);
         wln!("MaxActivationB {:.20}", self.max_activation_b);
-        wln!("MutateNeuronActivationTypeProb {:.20}", self.mutate_neuron_activation_type_prob);
-        wln!("ActivationFunction_SignedSigmoid_Prob {:.20}", self.activationfunction_signedsigmoid_prob);
-        wln!("ActivationFunction_UnsignedSigmoid_Prob {:.20}", self.activationfunction_unsignedsigmoid_prob);
-        wln!("ActivationFunction_Tanh_Prob {:.20}", self.activationfunction_tanh_prob);
-        wln!("ActivationFunction_TanhCubic_Prob {:.20}", self.activationfunction_tanhcubic_prob);
-        wln!("ActivationFunction_SignedStep_Prob {:.20}", self.activationfunction_signedstep_prob);
-        wln!("ActivationFunction_UnsignedStep_Prob {:.20}", self.activationfunction_unsignedstep_prob);
-        wln!("ActivationFunction_SignedGauss_Prob {:.20}", self.activationfunction_signedgauss_prob);
-        wln!("ActivationFunction_UnsignedGauss_Prob {:.20}", self.activationfunction_unsignedgauss_prob);
-        wln!("ActivationFunction_Abs_Prob {:.20}", self.activationfunction_abs_prob);
-        wln!("ActivationFunction_SignedSine_Prob {:.20}", self.activationfunction_signedsine_prob);
-        wln!("ActivationFunction_UnsignedSine_Prob {:.20}", self.activationfunction_unsignedsine_prob);
-        wln!("ActivationFunction_Linear_Prob {:.20}", self.activationfunction_linear_prob);
-        wln!("ActivationFunction_Relu_Prob {:.20}", self.activationfunction_relu_prob);
-        wln!("ActivationFunction_Softplus_Prob {:.20}", self.activationfunction_softplus_prob);
-        wln!("MutateNeuronTimeConstantsProb {:.20}", self.mutate_neuron_time_constants_prob);
-        wln!("MutateNeuronBiasesProb {:.20}", self.mutate_neuron_biases_prob);
-        wln!("MinNeuronTimeConstant {:.20}", self.min_neuron_time_constant);
-        wln!("MaxNeuronTimeConstant {:.20}", self.max_neuron_time_constant);
+        wln!(
+            "MutateNeuronActivationTypeProb {:.20}",
+            self.mutate_neuron_activation_type_prob
+        );
+        wln!(
+            "ActivationFunction_SignedSigmoid_Prob {:.20}",
+            self.activationfunction_signedsigmoid_prob
+        );
+        wln!(
+            "ActivationFunction_UnsignedSigmoid_Prob {:.20}",
+            self.activationfunction_unsignedsigmoid_prob
+        );
+        wln!(
+            "ActivationFunction_Tanh_Prob {:.20}",
+            self.activationfunction_tanh_prob
+        );
+        wln!(
+            "ActivationFunction_TanhCubic_Prob {:.20}",
+            self.activationfunction_tanhcubic_prob
+        );
+        wln!(
+            "ActivationFunction_SignedStep_Prob {:.20}",
+            self.activationfunction_signedstep_prob
+        );
+        wln!(
+            "ActivationFunction_UnsignedStep_Prob {:.20}",
+            self.activationfunction_unsignedstep_prob
+        );
+        wln!(
+            "ActivationFunction_SignedGauss_Prob {:.20}",
+            self.activationfunction_signedgauss_prob
+        );
+        wln!(
+            "ActivationFunction_UnsignedGauss_Prob {:.20}",
+            self.activationfunction_unsignedgauss_prob
+        );
+        wln!(
+            "ActivationFunction_Abs_Prob {:.20}",
+            self.activationfunction_abs_prob
+        );
+        wln!(
+            "ActivationFunction_SignedSine_Prob {:.20}",
+            self.activationfunction_signedsine_prob
+        );
+        wln!(
+            "ActivationFunction_UnsignedSine_Prob {:.20}",
+            self.activationfunction_unsignedsine_prob
+        );
+        wln!(
+            "ActivationFunction_Linear_Prob {:.20}",
+            self.activationfunction_linear_prob
+        );
+        wln!(
+            "ActivationFunction_Relu_Prob {:.20}",
+            self.activationfunction_relu_prob
+        );
+        wln!(
+            "ActivationFunction_Softplus_Prob {:.20}",
+            self.activationfunction_softplus_prob
+        );
+        wln!(
+            "MutateNeuronTimeConstantsProb {:.20}",
+            self.mutate_neuron_time_constants_prob
+        );
+        wln!(
+            "MutateNeuronBiasesProb {:.20}",
+            self.mutate_neuron_biases_prob
+        );
+        wln!(
+            "MinNeuronTimeConstant {:.20}",
+            self.min_neuron_time_constant
+        );
+        wln!(
+            "MaxNeuronTimeConstant {:.20}",
+            self.max_neuron_time_constant
+        );
         wln!("MinNeuronBias {:.20}", self.min_neuron_bias);
         wln!("MaxNeuronBias {:.20}", self.max_neuron_bias);
-        wln!("DontUseBiasNeuron {}", if self.dont_use_bias_neuron {"true"} else {"false"});
-        wln!("ArchiveEnforcement {}", if self.archive_enforcement {"true"} else {"false"});
-        wln!("AllowLoops {}", if self.allow_loops {"true"} else {"false"});
+        wln!(
+            "DontUseBiasNeuron {}",
+            if self.dont_use_bias_neuron {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "ArchiveEnforcement {}",
+            if self.archive_enforcement {
+                "true"
+            } else {
+                "false"
+            }
+        );
+        wln!(
+            "AllowLoops {}",
+            if self.allow_loops { "true" } else { "false" }
+        );
         wln!("DisjointCoeff {:.20}", self.disjoint_coeff);
         wln!("ExcessCoeff {:.20}", self.excess_coeff);
         wln!("ActivationADiffCoeff {:.20}", self.activation_a_diff_coeff);
         wln!("ActivationBDiffCoeff {:.20}", self.activation_b_diff_coeff);
         wln!("WeightDiffCoeff {:.20}", self.weight_diff_coeff);
-        wln!("TimeConstantDiffCoeff {:.20}", self.time_constant_diff_coeff);
+        wln!(
+            "TimeConstantDiffCoeff {:.20}",
+            self.time_constant_diff_coeff
+        );
         wln!("BiasDiffCoeff {:.20}", self.bias_diff_coeff);
-        wln!("ActivationFunctionDiffCoeff {:.20}", self.activation_function_diff_coeff);
+        wln!(
+            "ActivationFunctionDiffCoeff {:.20}",
+            self.activation_function_diff_coeff
+        );
         wln!("CompatTreshold {:.20}", self.compat_treshold);
         wln!("MinCompatTreshold {:.20}", self.min_compat_treshold);
-        wln!("CompatTresholdModifier {:.20}", self.compat_treshold_modifier);
-        wln!("CompatTreshChangeInterval_Generations {}", self.compat_tresh_change_interval_generations);
-        wln!("CompatTreshChangeInterval_Evaluations {}", self.compat_tresh_change_interval_evaluations);
-        wln!("MinDeltaCompatEqualGenomes {:.20}", self.min_delta_compat_equal_genomes);
+        wln!(
+            "CompatTresholdModifier {:.20}",
+            self.compat_treshold_modifier
+        );
+        wln!(
+            "CompatTreshChangeInterval_Generations {}",
+            self.compat_tresh_change_interval_generations
+        );
+        wln!(
+            "CompatTreshChangeInterval_Evaluations {}",
+            self.compat_tresh_change_interval_evaluations
+        );
+        wln!(
+            "MinDeltaCompatEqualGenomes {:.20}",
+            self.min_delta_compat_equal_genomes
+        );
         wln!("DivisionThreshold {:.20}", self.division_threshold);
         wln!("VarianceThreshold {:.20}", self.variance_threshold);
         wln!("BandThreshold {:.20}", self.band_threshold);
         wln!("InitialDepth {}", self.initial_depth);
         wln!("MaxDepth {}", self.max_depth);
         wln!("IterationLevel {}", self.iteration_level);
-        wln!("TournamentSelection {}", if self.tournament_selection {"true"} else {"false"});
+        wln!(
+            "TournamentSelection {}",
+            if self.tournament_selection {
+                "true"
+            } else {
+                "false"
+            }
+        );
         wln!("TournamentSize {}", self.tournament_size);
         wln!("CPPN_Bias {:.20}", self.cppn_bias);
         wln!("Width {:.20}", self.width);
         wln!("Height {:.20}", self.height);
         wln!("Qtree_X {:.20}", self.qtree_x);
         wln!("Qtree_Y {:.20}", self.qtree_y);
-        wln!("Leo {}", if self.leo {"true"} else {"false"});
+        wln!("Leo {}", if self.leo { "true" } else { "false" });
         wln!("LeoThreshold {:.20}", self.leo_threshold);
-        wln!("LeoSeed {}", if self.leo_seed {"true"} else {"false"});
-        wln!("GeometrySeed {}", if self.geometry_seed {"true"} else {"false"});
+        wln!("LeoSeed {}", if self.leo_seed { "true" } else { "false" });
+        wln!(
+            "GeometrySeed {}",
+            if self.geometry_seed { "true" } else { "false" }
+        );
         wln!("Elitism {:.20}", self.elite_fraction);
         wln!("NEAT_ParametersEnd");
 
