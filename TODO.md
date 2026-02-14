@@ -170,13 +170,10 @@
 1) `genes`
    - [x] структуры (проверить поля)
      - [x] `NeuronGene`
-       - [ ] не очень ясно, нужно ли вот это ( в оригинале этого нет) `/// Optional trait map for extra parameters (keeps arbitrary traits) pub traits: StdHashMap<String, TraitValue>,`
      - [x] `LinkGene`
-       - [ ] аналогично `/// Optional trait map for extra parameters (hebb_rate, hebb_pre_rate, ...)
-    pub traits: StdHashMap<String, TraitValue>,`
      - [x] `Gene`
      - [x] `traits` map
-       - [ ] NOTE: реализован упрощенный трейт в виде маппинга int, float, str, bool
+       - [x] NOTE: реализован упрощенный трейт в виде маппинга int, float, str, bool
    - [x] конструкторы/методы
      - [x] `new`
      - [x] `randomize_traits_map`
@@ -186,9 +183,9 @@
      - [x] `traits_behavior`
 
 2) `parameters`
-   - [ ] структура `Parameters` — проверить присутствие критичных полей (PopulationSize, min/max weights, HyperNEAT/ES поля: `DivisionThreshold`, `MaxDepth`, `IterationLevel`, `CPPN_Bias`, и т.д.)
-   - [ ] `Default` значения соответствуют ожиданиям
-   - [ ] чтение/запись параметров (если реализовано)
+   - [x] структура `Parameters` — проверить присутствие критичных полей (PopulationSize, min/max weights, HyperNEAT/ES поля: `DivisionThreshold`, `MaxDepth`, `IterationLevel`, `CPPN_Bias`, и т.д.)
+   - [x] `Default` значения соответствуют ожиданиям
+   - [x] чтение/запись параметров (если реализовано)
 
 3) `genome`
    - [ ] структура `Genome` — ключевые поля (`neuron_genes`, `link_genes`, `genome_gene`, `num_inputs`, `num_outputs`)
