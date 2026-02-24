@@ -1,5 +1,5 @@
 use rusty_neat::Parameters;
-use std::fs;
+use tempfile::NamedTempFile;
 
 #[test]
 fn test_reset_restores_defaults() {
@@ -43,26 +43,18 @@ fn test_save_and_load_file_roundtrip() {
     p.speciation = false;
     p.constraint_trials = 11;
 
-    let tmp_name = format!(
-        "rusty_neat_params_test_{}.txt",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos(),
-    );
-    let tmp_path = std::env::temp_dir().join(&tmp_name);
+    // Use a NamedTempFile so the file is cleaned up automatically.
+    let tmpfile = NamedTempFile::new().expect("create temp file");
+    let tmp_path = tmpfile.path().to_str().expect("path to str");
 
     // save to file
-    p.save(tmp_path.to_str().unwrap()).expect("save failed");
+    p.save(tmp_path).expect("save failed");
 
     // load into new object
     let mut q = Parameters::default();
-    q.load(tmp_path.to_str().unwrap()).expect("load failed");
+    q.load(tmp_path).expect("load failed");
 
     assert_eq!(q.population_size, 9001);
     assert_eq!(q.speciation, false);
     assert_eq!(q.constraint_trials, 11);
-
-    // cleanup
-    let _ = fs::remove_file(tmp_path);
 }

@@ -23,14 +23,14 @@ def test_population_manual_fill_and_mutation() -> None:
 
     assert pop.num_genomes() == 0
 
-    # add genome from init struct
-    init = rnp.PyGenomeInitStruct(1, 0, 1)
+    # add genome from init struct (use 2 inputs to include at least one real input + bias)
+    init = rnp.PyGenomeInitStruct(2, 0, 1)
     idx = pop.add_genome_from_initstruct(init)
     assert isinstance(idx, int)
     assert pop.num_genomes() == 1
 
-    # add random genome
-    idx2 = pop.add_random_genome(1, 0, 1)
+    # add random genome (use 2 inputs to satisfy Genome constructor requirement)
+    idx2 = pop.add_random_genome(2, 0, 1)
     assert isinstance(idx2, int)
     assert pop.num_genomes() == 2
 

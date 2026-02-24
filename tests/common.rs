@@ -34,8 +34,8 @@ pub fn seeded_rng(seed: u64) -> StdRng {
 pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f64]) -> Genome {
     assert!(cppn_outputs == out_weights.len());
     let mut g = Genome::default();
-    g.num_inputs = cppn_inputs;
-    g.num_outputs = cppn_outputs;
+    g.set_num_inputs(cppn_inputs);
+    g.set_num_outputs(cppn_outputs);
 
     // Assign neuron ids: inputs 1..cppn_inputs, outputs next
     let mut next_id: u64 = 1;
@@ -57,7 +57,7 @@ pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f
             0.0,
             ActivationFunction::UnsignedSigmoid,
         );
-        g.neuron_genes.push(ng);
+        g.push_neuron(ng);
         next_id += 1;
     }
     // outputs
@@ -74,7 +74,7 @@ pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f
             0.0,
             ActivationFunction::Linear,
         );
-        g.neuron_genes.push(ng);
+        g.push_neuron(ng);
         next_id += 1;
     }
 
@@ -84,7 +84,7 @@ pub fn make_fixed_cppn(cppn_inputs: usize, cppn_outputs: usize, out_weights: &[f
     for (out_idx, &w) in out_weights.iter().enumerate() {
         let out_id = (cppn_inputs + out_idx) as u64 + 1; // since outputs come after inputs
         let lg = LinkGene::new(bias_id, out_id, innov, w, false);
-        g.link_genes.push(lg);
+        g.push_link(lg);
         innov += 1;
     }
 
@@ -101,8 +101,8 @@ pub fn make_simple_genome_with_traits(
     genome_traits: &[(&str, TraitValue)],
 ) -> Genome {
     let mut g = Genome::default();
-    g.num_inputs = 1;
-    g.num_outputs = 1;
+    g.set_num_inputs(1);
+    g.set_num_outputs(1);
 
     // neuron
     let mut ng = NeuronGene::new(
@@ -120,21 +120,21 @@ pub fn make_simple_genome_with_traits(
     for (k, v) in neuron_traits {
         ng.traits.insert(k.to_string(), v.clone());
     }
-    g.neuron_genes.push(ng);
+    g.push_neuron(ng);
 
     // link
     let mut lg = LinkGene::new(1, 2, 1, 0.1, false);
     for (k, v) in link_traits {
         lg.traits.insert(k.to_string(), v.clone());
     }
-    g.link_genes.push(lg);
+    g.push_link(lg);
 
     if !genome_traits.is_empty() {
         let mut gg = rusty_neat::genes::Gene::new();
         for (k, v) in genome_traits {
             gg.traits.insert(k.to_string(), v.clone());
         }
-        g.genome_gene = Some(gg);
+        g.set_genome_gene(Some(gg));
     }
 
     g

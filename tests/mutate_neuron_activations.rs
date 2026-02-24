@@ -30,8 +30,8 @@ fn test_mutate_neuron_activations_a_and_b_and_type() {
 
     // Construct a genome with 1 input and 2 hidden neurons
     let mut g = Genome::default();
-    g.num_inputs = 1;
-    g.num_outputs = 1;
+    g.set_num_inputs(1);
+    g.set_num_outputs(1);
 
     // push one input neuron
     let input = NeuronGene::new(
@@ -46,7 +46,7 @@ fn test_mutate_neuron_activations_a_and_b_and_type() {
         0.0,
         ActivationFunction::Linear,
     );
-    g.neuron_genes.push(input);
+    g.push_neuron(input);
 
     // two hidden neurons
     let h1 = NeuronGene::new(
@@ -77,8 +77,8 @@ fn test_mutate_neuron_activations_a_and_b_and_type() {
     let orig_a_h1 = h1.a;
     let orig_b_h1 = h1.b;
 
-    g.neuron_genes.push(h1);
-    g.neuron_genes.push(h2);
+    g.push_neuron(h1);
+    g.push_neuron(h2);
 
     let mut rng = StdRng::seed_from_u64(42);
 
@@ -86,7 +86,7 @@ fn test_mutate_neuron_activations_a_and_b_and_type() {
     assert!(changed_a, "mutate_neuron_activations_a should return true");
 
     // ensure at least one hidden neuron's a changed from original
-    let h1_after = g.neuron_genes.iter().find(|n| n.id == 2).unwrap();
+    let h1_after = g.neuron_genes().iter().find(|n| n.id == 2).unwrap();
     assert!(
         (h1_after.a - orig_a_h1).abs() > 0.0,
         "A parameter should have been perturbed"
@@ -95,7 +95,7 @@ fn test_mutate_neuron_activations_a_and_b_and_type() {
     let changed_b = g.mutate_neuron_activations_b(&params, &mut rng);
     assert!(changed_b, "mutate_neuron_activations_b should return true");
 
-    let h1_after_b = g.neuron_genes.iter().find(|n| n.id == 2).unwrap();
+    let h1_after_b = g.neuron_genes().iter().find(|n| n.id == 2).unwrap();
     assert!(
         (h1_after_b.b - orig_b_h1).abs() > 0.0,
         "B parameter should have been perturbed"

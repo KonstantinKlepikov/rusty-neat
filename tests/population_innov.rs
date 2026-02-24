@@ -14,7 +14,7 @@ fn innovations_are_shared_between_genomes() {
 
     // create minimal genomes: input id=1, output id=2, one link 1->2 with innov 1
     let mut g1 = Genome::default();
-    g1.neuron_genes.push(crate::genes::NeuronGene::new(
+    g1.push_neuron(crate::genes::NeuronGene::new(
         1,
         crate::genes::NeuronType::Input,
         0,
@@ -26,7 +26,7 @@ fn innovations_are_shared_between_genomes() {
         0.0,
         crate::genes::ActivationFunction::Linear,
     ));
-    g1.neuron_genes.push(crate::genes::NeuronGene::new(
+    g1.push_neuron(crate::genes::NeuronGene::new(
         2,
         crate::genes::NeuronType::Output,
         0,
@@ -38,8 +38,7 @@ fn innovations_are_shared_between_genomes() {
         0.0,
         crate::genes::ActivationFunction::Linear,
     ));
-    g1.link_genes
-        .push(crate::genes::LinkGene::new(1, 2, 1, 1.0, false));
+    g1.push_link(crate::genes::LinkGene::new(1, 2, 1, 1.0, false));
 
     let g2 = g1.clone();
 
@@ -59,8 +58,8 @@ fn innovations_are_shared_between_genomes() {
     let g0 = &pop.genomes[0];
     let g1 = &pop.genomes[1];
 
-    let ids0: Vec<u64> = g0.neuron_genes.iter().map(|n| n.id).collect();
-    let ids1: Vec<u64> = g1.neuron_genes.iter().map(|n| n.id).collect();
+    let ids0: Vec<u64> = g0.neuron_genes().iter().map(|n| n.id).collect();
+    let ids1: Vec<u64> = g1.neuron_genes().iter().map(|n| n.id).collect();
 
     // find neuron ids that are not 1 or 2
     let new0: Vec<u64> = ids0.into_iter().filter(|&id| id != 1 && id != 2).collect();

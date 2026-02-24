@@ -64,8 +64,8 @@ fn test_mutate_and_randomize_traits() {
     );
 
     let mut g = Genome::default();
-    g.num_inputs = 1;
-    g.num_outputs = 1;
+    g.set_num_inputs(1);
+    g.set_num_outputs(1);
 
     // add one hidden neuron with a float trait
     let mut ng = NeuronGene::new(
@@ -81,40 +81,34 @@ fn test_mutate_and_randomize_traits() {
         ActivationFunction::SignedSigmoid,
     );
     ng.traits.insert("t1".to_string(), TraitValue::Float(0.5));
-    g.neuron_genes.push(ng);
+    g.push_neuron(ng);
 
     // add a link with trait
     let mut lg = LinkGene::new(1, 2, 1, 0.1, false);
     lg.traits.insert("t1".to_string(), TraitValue::Int(1));
-    g.link_genes.push(lg);
+    g.push_link(lg);
 
     // add genome-level gene (int trait)
     let mut gg = Gene::new();
     gg.traits.insert("t1".to_string(), TraitValue::Int(0));
-    g.genome_gene = Some(gg);
+    g.set_genome_gene(Some(gg));
 
     let mut rng = seeded_rng(123);
 
     // Mutation should flip or change traits because prob=1.0
     // Save old values and verify they changed after mutation
-    let old_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
-    let old_link_t1 = g.link_genes[0].traits.get("t1").cloned();
-    let old_genome_t1 = g
-        .genome_gene
-        .as_ref()
-        .and_then(|gg| gg.traits.get("t1").cloned());
+    let old_neuron_t1 = g.neuron_gene_at(0).traits.get("t1").cloned();
+    let old_link_t1 = g.link_gene_at(0).traits.get("t1").cloned();
+    let old_genome_t1 = g.genome_gene().and_then(|gg| gg.traits.get("t1").cloned());
 
     assert!(g.mutate_neuron_traits(&params, &mut rng));
     assert!(g.mutate_link_traits(&params, &mut rng));
     assert!(g.mutate_genome_traits(&params, &mut rng));
 
     // check that values actually changed
-    let new_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
-    let new_link_t1 = g.link_genes[0].traits.get("t1").cloned();
-    let new_genome_t1 = g
-        .genome_gene
-        .as_ref()
-        .and_then(|gg| gg.traits.get("t1").cloned());
+    let new_neuron_t1 = g.neuron_gene_at(0).traits.get("t1").cloned();
+    let new_link_t1 = g.link_gene_at(0).traits.get("t1").cloned();
+    let new_genome_t1 = g.genome_gene().and_then(|gg| gg.traits.get("t1").cloned());
 
     assert_ne!(
         old_neuron_t1, new_neuron_t1,
@@ -128,21 +122,15 @@ fn test_mutate_and_randomize_traits() {
 
     // Randomize traits should not panic and should change values types appropriately
     // Save values before randomize and ensure they change and have expected types
-    let pre_rand_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
-    let pre_rand_link_t1 = g.link_genes[0].traits.get("t1").cloned();
-    let pre_rand_genome_t1 = g
-        .genome_gene
-        .as_ref()
-        .and_then(|gg| gg.traits.get("t1").cloned());
+    let pre_rand_neuron_t1 = g.neuron_gene_at(0).traits.get("t1").cloned();
+    let pre_rand_link_t1 = g.link_gene_at(0).traits.get("t1").cloned();
+    let pre_rand_genome_t1 = g.genome_gene().and_then(|gg| gg.traits.get("t1").cloned());
 
     g.randomize_traits(&mut rng);
 
-    let post_rand_neuron_t1 = g.neuron_genes[0].traits.get("t1").cloned();
-    let post_rand_link_t1 = g.link_genes[0].traits.get("t1").cloned();
-    let post_rand_genome_t1 = g
-        .genome_gene
-        .as_ref()
-        .and_then(|gg| gg.traits.get("t1").cloned());
+    let post_rand_neuron_t1 = g.neuron_gene_at(0).traits.get("t1").cloned();
+    let post_rand_link_t1 = g.link_gene_at(0).traits.get("t1").cloned();
+    let post_rand_genome_t1 = g.genome_gene().and_then(|gg| gg.traits.get("t1").cloned());
 
     assert_ne!(
         pre_rand_neuron_t1, post_rand_neuron_t1,

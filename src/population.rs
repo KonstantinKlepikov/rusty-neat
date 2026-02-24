@@ -37,12 +37,12 @@ impl Population {
         let mut max_neuron_id: u64 = 0;
         let mut max_innov_id: u64 = 0;
         for g in &genomes {
-            for n in &g.neuron_genes {
+            for n in g.neuron_genes() {
                 if n.id > max_neuron_id {
                     max_neuron_id = n.id;
                 }
             }
-            for l in &g.link_genes {
+            for l in g.link_genes() {
                 if l.innovation_id > max_innov_id {
                     max_innov_id = l.innovation_id;
                 }
@@ -59,7 +59,18 @@ impl Population {
         } else {
             max_innov_id + 1
         };
-        let innov_db = InnovationDatabase::new(next_neuron, next_innov);
+
+        // Create innovation DB starting after existing ids and populate it
+        // with all link innovations present in the provided genomes. This
+        // mirrors C++ behavior where the database is initialized from a
+        // genome so that subsequent mutations reuse existing innovations.
+        let mut innov_db = InnovationDatabase::new(next_neuron, next_innov);
+        // collect all link genes from genomes to seed the innovation DB
+        let mut all_links: Vec<crate::genes::LinkGene> = Vec::new();
+        for g in &genomes {
+            all_links.extend(g.link_genes().clone());
+        }
+        innov_db.init_from_genome(&all_links, next_neuron, next_innov);
 
         Population {
             genomes,

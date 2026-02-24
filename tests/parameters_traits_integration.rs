@@ -70,7 +70,7 @@ fn genome_mutate_traits_respects_trait_parameters() {
     // Mutations should occur (mutation_prob = 1.0) and results should be within the configured ranges
     let changed_neuron = g.mutate_neuron_traits(&params, &mut rng);
     assert!(changed_neuron, "neuron traits should have mutated");
-    if let Some(nv) = g.neuron_genes[0].traits.get("n1") {
+    if let Some(nv) = g.neuron_gene_at(0).traits.get("n1") {
         match nv {
             TraitValue::Float(v) => {
                 assert!(*v >= 0.0 && *v <= 1.0, "neuron trait out of bounds");
@@ -87,7 +87,7 @@ fn genome_mutate_traits_respects_trait_parameters() {
 
     let changed_link = g.mutate_link_traits(&params, &mut rng);
     assert!(changed_link, "link traits should have mutated");
-    if let Some(lv) = g.link_genes[0].traits.get("l1") {
+    if let Some(lv) = g.link_gene_at(0).traits.get("l1") {
         match lv {
             TraitValue::Int(v) => {
                 assert!(*v >= 0 && *v <= 10, "link trait out of bounds");
@@ -115,24 +115,24 @@ fn genome_randomize_traits_sets_values_in_basic_ranges() {
     g.randomize_traits(&mut rng);
 
     // check ranges: ints in [-5,5], floats in [-1,1]
-    if let Some(TraitValue::Int(v)) = g.neuron_genes[0].traits.get("ti") {
+    if let Some(TraitValue::Int(v)) = g.neuron_gene_at(0).traits.get("ti").cloned() {
         assert!(
-            *v >= -5 && *v <= 5,
+            v >= -5 && v <= 5,
             "neuron int randomized out of expected range"
         );
     } else {
         panic!("ti missing or wrong type");
     }
-    if let Some(TraitValue::Float(v)) = g.neuron_genes[0].traits.get("tf") {
+    if let Some(TraitValue::Float(v)) = g.neuron_gene_at(0).traits.get("tf").cloned() {
         assert!(
-            *v >= -1.0 && *v <= 1.0,
+            v >= -1.0 && v <= 1.0,
             "neuron float randomized out of expected range"
         );
     } else {
         panic!("tf missing or wrong type");
     }
 
-    if let Some(TraitValue::Int(v)) = g.link_genes[0].traits.get("li") {
+    if let Some(TraitValue::Int(v)) = g.link_gene_at(0).traits.get("li") {
         assert!(
             *v >= -5 && *v <= 5,
             "link int randomized out of expected range"
@@ -140,7 +140,7 @@ fn genome_randomize_traits_sets_values_in_basic_ranges() {
     } else {
         panic!("li missing or wrong type");
     }
-    if let Some(TraitValue::Float(v)) = g.link_genes[0].traits.get("lf") {
+    if let Some(TraitValue::Float(v)) = g.link_gene_at(0).traits.get("lf") {
         assert!(
             *v >= -1.0 && *v <= 1.0,
             "link float randomized out of expected range"
@@ -149,18 +149,18 @@ fn genome_randomize_traits_sets_values_in_basic_ranges() {
         panic!("lf missing or wrong type");
     }
 
-    if let Some(gene) = g.genome_gene.as_ref() {
-        if let Some(TraitValue::Int(v)) = gene.traits.get("gi") {
+    if let Some(gene) = g.genome_gene() {
+        if let Some(TraitValue::Int(v)) = gene.traits.get("gi").cloned() {
             assert!(
-                *v >= -5 && *v <= 5,
+                v >= -5 && v <= 5,
                 "genome int randomized out of expected range"
             );
         } else {
             panic!("gi missing or wrong type");
         }
-        if let Some(TraitValue::Float(v)) = gene.traits.get("gf") {
+        if let Some(TraitValue::Float(v)) = gene.traits.get("gf").cloned() {
             assert!(
-                *v >= -1.0 && *v <= 1.0,
+                v >= -1.0 && v <= 1.0,
                 "genome float randomized out of expected range"
             );
         } else {
@@ -233,10 +233,10 @@ fn genome_mutate_traits_dep_key_dep_values_integration() {
     );
 
     // set dep to non-matching value -> still skipped
-    g.neuron_genes[0]
+    g.neuron_gene_at_mut(0)
         .traits
         .insert("dep".to_string(), TraitValue::Int(2));
-    g.link_genes[0]
+    g.link_gene_at_mut(0)
         .traits
         .insert("dep".to_string(), TraitValue::Int(2));
     let mut rng2 = StdRng::seed_from_u64(2026);
@@ -254,10 +254,10 @@ fn genome_mutate_traits_dep_key_dep_values_integration() {
     );
 
     // set dep to matching value -> mutation should occur
-    g.neuron_genes[0]
+    g.neuron_gene_at_mut(0)
         .traits
         .insert("dep".to_string(), TraitValue::Int(1));
-    g.link_genes[0]
+    g.link_gene_at_mut(0)
         .traits
         .insert("dep".to_string(), TraitValue::Int(1));
     let mut rng4 = StdRng::seed_from_u64(2026);
@@ -309,7 +309,7 @@ fn genome_mutate_genome_traits_dep_key_dep_values_integration() {
     );
 
     // set non-matching dep -> still skipped
-    if let Some(gg) = g.genome_gene.as_mut() {
+    if let Some(gg) = g.genome_gene_mut() {
         gg.traits.insert("gdep".to_string(), TraitValue::Int(2));
     }
     let mut rng2 = StdRng::seed_from_u64(4242);
@@ -320,7 +320,7 @@ fn genome_mutate_genome_traits_dep_key_dep_values_integration() {
     );
 
     // set matching dep -> mutation should occur
-    if let Some(gg) = g.genome_gene.as_mut() {
+    if let Some(gg) = g.genome_gene_mut() {
         gg.traits.insert("gdep".to_string(), TraitValue::Int(1));
     }
     let mut rng3 = StdRng::seed_from_u64(4242);

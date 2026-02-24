@@ -93,8 +93,8 @@ fn with_coords_sets_custom_conn_obeys_flags_false() {
 // genome to exercise link-generation filtering in `BuildHyperNEATPhenotype`.
 fn make_constant_cppn(cppn_inputs: usize, cppn_outputs: usize) -> Genome {
     let mut g = Genome::default();
-    g.num_inputs = cppn_inputs;
-    g.num_outputs = cppn_outputs;
+    g.set_num_inputs(cppn_inputs);
+    g.set_num_outputs(cppn_outputs);
 
     // Assign neuron ids: inputs 1..cppn_inputs, outputs next
     let mut next_id: u64 = 1;
@@ -116,7 +116,7 @@ fn make_constant_cppn(cppn_inputs: usize, cppn_outputs: usize) -> Genome {
             0.0,
             ActivationFunction::UnsignedSigmoid,
         );
-        g.neuron_genes.push(ng);
+        g.push_neuron(ng);
         next_id += 1;
     }
     // outputs
@@ -133,7 +133,7 @@ fn make_constant_cppn(cppn_inputs: usize, cppn_outputs: usize) -> Genome {
             0.0,
             ActivationFunction::Linear,
         );
-        g.neuron_genes.push(ng);
+        g.push_neuron(ng);
         next_id += 1;
     }
 
@@ -143,7 +143,7 @@ fn make_constant_cppn(cppn_inputs: usize, cppn_outputs: usize) -> Genome {
     for out_idx in 0..cppn_outputs {
         let out_id = (cppn_inputs + out_idx) as u64 + 1; // since next id started after inputs
         let lg = LinkGene::new(bias_id, out_id, innov, 1.0, false);
-        g.link_genes.push(lg);
+        g.push_link(lg);
         innov += 1;
     }
 

@@ -1,6 +1,7 @@
 use crate::utils::{clamp_f64, clamp_i64};
 use rand::prelude::*;
 use std::collections::HashMap as StdHashMap;
+use serde::{Deserialize, Serialize};
 
 /// Trait parameter details (simplified)
 #[derive(Debug, Clone)]
@@ -70,7 +71,7 @@ pub enum ActivationFunction {
 }
 
 /// Neuron type
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum NeuronType {
     Input,
     Output,
@@ -459,6 +460,11 @@ impl NeuronGene {
         }
     }
 
+    /// Initialize traits according to `TraitParameters` (mirrors C++ InitTraits)
+    pub fn init_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) {
+        init_trait_map(&mut self.traits, tp, rng);
+    }
+
     /// Mutate traits using full `TraitParameters` map (C++-like semantics)
     pub fn mutate_traits(
         &mut self,
@@ -643,6 +649,11 @@ impl LinkGene {
                 }
             }
         }
+    }
+
+    /// Initialize traits according to `TraitParameters` (mirrors C++ InitTraits)
+    pub fn init_traits(&mut self, tp: &StdHashMap<String, TraitParameters>, rng: &mut impl Rng) {
+        init_trait_map(&mut self.traits, tp, rng);
     }
 }
 

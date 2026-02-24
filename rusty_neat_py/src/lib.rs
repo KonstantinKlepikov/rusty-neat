@@ -20,11 +20,33 @@ impl PyGenome {
     /// Construct a new Genome with basic dimensions. Other parameters use sensible defaults.
     #[new]
     fn new(id: u64, num_inputs: usize, num_hidden: usize, num_outputs: usize) -> Self {
+        // Interpret `num_inputs` as the number of non-bias inputs exposed to Python.
+        // Convert to the internal `GenomeInitStruct.num_inputs` by adding bias
+        // unless parameters request no bias neuron.
+        let params_default = rusty_neat::Parameters::default();
+        let mut effective_inputs = if params_default.dont_use_bias_neuron {
+            num_inputs
+        } else {
+            // include bias neuron: Python request of 1 -> internal 2
+            num_inputs + 1
+        };
+
+        // Defensive: ensure internal num_inputs satisfies Genome::new assertion
+        // (internal semantics expect >1 when outputs > 0). This keeps Python
+        // quick-constructor tolerant of callers that passed 1 for a single
+        // exposed input (we'll add bias internally).
+        if effective_inputs <= 1 && num_outputs > 0 {
+            effective_inputs = 2;
+        }
+
+        // debug: log effective inputs to help track down failing constructors (removed)
+
         let params = rusty_neat::GenomeInitStruct {
-            num_inputs,
+            num_inputs: effective_inputs,
             num_hidden,
             num_outputs,
-            fs_neat: false,
+            // create an initially empty/minimal genome for the quick constructor
+            fs_neat: true,
             output_act_type: rusty_neat::genes::ActivationFunction::SignedSigmoid,
             hidden_act_type: rusty_neat::genes::ActivationFunction::SignedSigmoid,
             seed_type: rusty_neat::genome::GenomeSeedType::Perceptron,
@@ -32,7 +54,7 @@ impl PyGenome {
             fs_neat_links: 0,
         };
 
-        let g = rusty_neat::Genome::new(id, &params);
+        let g = rusty_neat::Genome::new(id, &params_default, &params);
         PyGenome {
             inner: Arc::new(RwLock::new(g)),
         }
@@ -61,7 +83,7 @@ impl PyGenome {
             .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         let list = PyList::empty(py);
-        for ng in &g.neuron_genes {
+        for ng in g.neuron_genes() {
             let pyng = PyNeuronGene {
                 id: ng.id,
                 neuron_type: format!("{:?}", ng.neuron_type),
@@ -85,7 +107,7 @@ impl PyGenome {
             .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         let list = PyList::empty(py);
-        for lg in &g.link_genes {
+        for lg in g.link_genes() {
             let pylg = PyLinkGene {
                 from_neuron_id: lg.from_neuron_id,
                 to_neuron_id: lg.to_neuron_id,
@@ -114,7 +136,7 @@ impl PyGenome {
             .inner
             .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        Ok(g.id)
+        Ok(g.get_id())
     }
 
     fn set_id(&mut self, id: u64) -> PyResult<()> {
@@ -122,7 +144,7 @@ impl PyGenome {
             .inner
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        g.id = id;
+        g.set_id(id);
         Ok(())
     }
 
@@ -244,10 +266,10 @@ impl PyNeuronIterator {
                 .genome
                 .read()
                 .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-            if self.idx >= g.neuron_genes.len() {
+            if self.idx >= g.neuron_genes().len() {
                 None
             } else {
-                Some(g.neuron_genes[self.idx].clone())
+                Some(g.neuron_genes()[self.idx].clone())
             }
         };
 
@@ -295,10 +317,10 @@ impl PyLinkIterator {
                 .genome
                 .read()
                 .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-            if self.idx >= g.link_genes.len() {
+            if self.idx >= g.link_genes().len() {
                 None
             } else {
-                Some(g.link_genes[self.idx].clone())
+                Some(g.link_genes()[self.idx].clone())
             }
         };
 
@@ -1934,7 +1956,7 @@ impl PyGenomeRef {
             .population
             .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        Ok(p.genomes.get(self.idx).map(|g| g.id).unwrap_or(0))
+        Ok(p.genomes.get(self.idx).map(|g| g.get_id()).unwrap_or(0))
     }
 
     fn get_fitness(&self) -> PyResult<f64> {
@@ -1942,7 +1964,10 @@ impl PyGenomeRef {
             .population
             .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        Ok(p.genomes.get(self.idx).map(|g| g.fitness).unwrap_or(0.0))
+        Ok(p.genomes
+            .get(self.idx)
+            .map(|g| g.get_fitness())
+            .unwrap_or(0.0))
     }
 
     fn set_fitness(&mut self, v: f64) -> PyResult<()> {
@@ -1951,7 +1976,7 @@ impl PyGenomeRef {
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         if let Some(g) = p.genomes.get_mut(self.idx) {
-            g.fitness = v;
+            g.set_fitness(v);
             Ok(())
         } else {
             Err(PyRuntimeError::new_err("invalid genome index"))
@@ -1965,7 +1990,7 @@ impl PyGenomeRef {
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         Ok(p.genomes
             .get(self.idx)
-            .map(|g| g.adjusted_fitness)
+            .map(|g| g.get_adj_fitness())
             .unwrap_or(0.0))
     }
 
@@ -1976,7 +2001,7 @@ impl PyGenomeRef {
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         Ok(p.genomes
             .get(self.idx)
-            .map(|g| g.neuron_genes.len())
+            .map(|g| g.neuron_genes().len())
             .unwrap_or(0))
     }
 
@@ -1987,7 +2012,7 @@ impl PyGenomeRef {
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         Ok(p.genomes
             .get(self.idx)
-            .map(|g| g.link_genes.len())
+            .map(|g| g.link_genes().len())
             .unwrap_or(0))
     }
 
@@ -2096,9 +2121,9 @@ impl PySpeciesRef {
             let mut best_f = std::f64::NEG_INFINITY;
             for &gid in &s.members {
                 for (i, g) in p.genomes.iter().enumerate() {
-                    if g.id == gid {
-                        if g.fitness > best_f {
-                            best_f = g.fitness;
+                    if g.get_id() == gid {
+                        if g.get_fitness() > best_f {
+                            best_f = g.get_fitness();
                             best_idx = Some(i);
                         }
                         break;
@@ -2264,8 +2289,8 @@ impl PyPopulation {
         // build sorted index list by fitness (desc)
         let mut idxs: Vec<usize> = (0..n).collect();
         idxs.sort_by(|&a, &b| {
-            let fa = p.genomes[a].fitness;
-            let fb = p.genomes[b].fitness;
+            let fa = p.genomes[a].get_fitness();
+            let fb = p.genomes[b].get_fitness();
             fb.partial_cmp(&fa).unwrap_or(Ordering::Equal)
         });
 
@@ -2280,7 +2305,7 @@ impl PyPopulation {
         // reproduction via tournament selection + mutation
         let mut rng = rand::thread_rng();
         // copy fitnesses and parameters to avoid borrowing pop during selection/mutations
-        let fitnesses: Vec<f64> = p.genomes.iter().map(|g| g.fitness).collect();
+        let fitnesses: Vec<f64> = p.genomes.iter().map(|g| g.get_fitness()).collect();
         let params_clone = p.parameters.clone();
         while new_genomes.len() < n {
             // tournament selection (size 3)
@@ -2340,10 +2365,10 @@ impl PyPopulation {
             return Ok(None);
         }
         let mut best_idx = 0usize;
-        let mut best_f = p.genomes[0].fitness;
+        let mut best_f = p.genomes[0].get_fitness();
         for (i, g) in p.genomes.iter().enumerate() {
-            if g.fitness > best_f {
-                best_f = g.fitness;
+            if g.get_fitness() > best_f {
+                best_f = g.get_fitness();
                 best_idx = i;
             }
         }
@@ -2452,8 +2477,22 @@ impl PyPopulation {
             _ => rusty_neat::genome::GenomeSeedType::Perceptron,
         };
 
+        // Translate Python-visible `init.num_inputs` (non-bias) into the internal
+        // `GenomeInitStruct.num_inputs` by adding the bias neuron unless parameters
+        // request no bias neuron. Also defend against creating a Genome with
+        // internal num_inputs <= 1 when outputs > 0.
+        let params_default = rusty_neat::Parameters::default();
+        let mut effective_inputs = if params_default.dont_use_bias_neuron {
+            init.num_inputs
+        } else {
+            init.num_inputs + 1
+        };
+        if effective_inputs <= 1 && init.num_outputs > 0 {
+            effective_inputs = 2;
+        }
+
         let ginit = rusty_neat::GenomeInitStruct {
-            num_inputs: init.num_inputs,
+            num_inputs: effective_inputs,
             num_hidden: init.num_hidden,
             num_outputs: init.num_outputs,
             fs_neat: init.fs_neat,
@@ -2468,8 +2507,8 @@ impl PyPopulation {
             .inner
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        let new_id = p.genomes.iter().map(|g| g.id).max().unwrap_or(0) + 1;
-        let g = rusty_neat::Genome::new(new_id, &ginit);
+        let new_id = p.genomes.iter().map(|g| g.get_id()).max().unwrap_or(0) + 1;
+        let g = rusty_neat::Genome::new(new_id, &rusty_neat::Parameters::default(), &ginit);
         p.genomes.push(g);
         Ok(p.genomes.len() - 1)
     }
@@ -2482,8 +2521,24 @@ impl PyPopulation {
         num_hidden: usize,
         num_outputs: usize,
     ) -> PyResult<usize> {
+        // Interpret `num_inputs` as the number of non-bias inputs exposed to Python.
+        // Convert to the internal `GenomeInitStruct.num_inputs` by adding bias
+        // unless parameters request no bias neuron. Also defend against callers
+        // passing 1 internal input when outputs > 0 (Genome::new requires >1).
+        let params_default = rusty_neat::Parameters::default();
+        let mut effective_inputs = if params_default.dont_use_bias_neuron {
+            num_inputs
+        } else {
+            num_inputs + 1
+        };
+        if effective_inputs <= 1 && num_outputs > 0 {
+            effective_inputs = 2;
+        }
+
+        // debug logging removed
+
         let ginit = rusty_neat::GenomeInitStruct {
-            num_inputs,
+            num_inputs: effective_inputs,
             num_hidden,
             num_outputs,
             fs_neat: false,
@@ -2498,8 +2553,8 @@ impl PyPopulation {
             .inner
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        let new_id = p.genomes.iter().map(|g| g.id).max().unwrap_or(0) + 1;
-        let mut g = rusty_neat::Genome::new(new_id, &ginit);
+        let new_id = p.genomes.iter().map(|g| g.get_id()).max().unwrap_or(0) + 1;
+        let mut g = rusty_neat::Genome::new(new_id, &rusty_neat::Parameters::default(), &ginit);
         let params_clone = p.parameters.clone();
         let mut rng = rand::thread_rng();
         if rng.random::<f64>() < 0.5 {
@@ -2523,7 +2578,7 @@ impl PyPopulation {
         let mut ids: Vec<u64> = Vec::new();
         for idx in members {
             if let Some(g) = p.genomes.get(idx) {
-                ids.push(g.id);
+                ids.push(g.get_id());
             }
         }
         let new_id = p.species.iter().map(|s| s.id).max().unwrap_or(0) + 1;

@@ -3,11 +3,12 @@
 // === Imports analogous to C++ standard and Boost libraries ===
 use crate::genes::{ActivationFunction, Gene as GenomeGene, LinkGene, NeuronGene, TraitValue};
 use crate::hyperneat::Substrate;
-use crate::innovation::InnovationDatabase;
+use crate::innovation::{InnovationDatabase, InnovationType};
 use crate::network::{Connection as PhConnection, NeuralNetwork, Neuron as PhNeuron};
 use crate::parameters::Parameters;
 use crate::utils::{clamp_f64, scale_f64};
 use rand::Rng;
+use rand::rngs::ThreadRng;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult};
@@ -75,55 +76,280 @@ impl PhenotypeBehavior {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Genome {
     /// Genome ID
-    pub id: u64,
+    id: u64,
     /// Number of input neurons
-    pub num_inputs: usize,
+    num_inputs: usize,
     /// Number of output neurons
-    pub num_outputs: usize,
+    num_outputs: usize,
     /// Genome's fitness score
-    pub fitness: f64,
+    fitness: f64,
     /// Genome's adjusted fitness score
-    pub adjusted_fitness: f64,
+    adjusted_fitness: f64,
     /// Depth of the network
-    pub depth: usize,
+    depth: usize,
     /// How many individuals this genome should spawn
-    pub offspring_amount: f64,
+    offspring_amount: f64,
     /// List of neuron genes
-    pub neuron_genes: Vec<NeuronGene>,
+    neuron_genes: Vec<NeuronGene>,
     /// List of link genes
-    pub link_genes: Vec<LinkGene>,
+    link_genes: Vec<LinkGene>,
     /// Traits that belong to the genome itself
-    pub genome_gene: Option<GenomeGene>,
+    genome_gene: Option<GenomeGene>,
     /// Whether this genome was already evaluated (used in steady state evolution)
-    pub evaluated: bool,
+    evaluated: bool,
     /// Initial genome complexity: number of neurons
-    pub initial_num_neurons: usize,
+    initial_num_neurons: usize,
     /// Initial genome complexity: number of links
-    pub initial_num_links: usize,
+    initial_num_links: usize,
     /// Pointer to phenotype behavior (for novelty search, placeholder for now)
-    pub phenotype_behavior: Option<PhenotypeBehavior>,
+    phenotype_behavior: Option<PhenotypeBehavior>,
 }
 
 impl Genome {
-    /// Create a new Genome from parameters and initialization struct
-    pub fn new(id: u64, params: &GenomeInitStruct) -> Self {
-        // This is a stub. Real logic should initialize neuron_genes, link_genes, etc.
-        Genome {
+    /// Create a new Genome from parameters and initialization struct.
+    /// This is a port of the C++ `Genome::Genome(const Parameters&, const GenomeInitStruct&)`.
+    pub fn new(id: u64, params: &Parameters, inits: &GenomeInitStruct) -> Self {
+        assert!(inits.num_inputs > 1 && inits.num_outputs > 0);
+
+        let mut rng: ThreadRng = ThreadRng::default();
+
+        let mut genome = Genome {
             id,
-            num_inputs: params.num_inputs,
-            num_outputs: params.num_outputs,
+            num_inputs: 0,
+            num_outputs: 0,
             fitness: 0.0,
             adjusted_fitness: 0.0,
             depth: 0,
             offspring_amount: 0.0,
             neuron_genes: Vec::new(),
             link_genes: Vec::new(),
-            genome_gene: None,
+            genome_gene: Some(GenomeGene::new()),
             evaluated: false,
-            initial_num_neurons: params.num_inputs + params.num_hidden + params.num_outputs,
+            initial_num_neurons: 0,
             initial_num_links: 0,
             phenotype_behavior: None,
+        };
+
+        let mut t_innovnum: u64 = 1;
+        let mut t_nnum: u64 = 1;
+
+        // Determine seed type (compat with C++ enum semantics)
+        let mut seed_type = inits.seed_type;
+        if (seed_type == GenomeSeedType::Layered) && (inits.num_hidden == 0) {
+            seed_type = GenomeSeedType::Perceptron;
         }
+
+        // Inputs (last input may be bias depending on params)
+        if !params.dont_use_bias_neuron {
+            for _i in 0..(inits.num_inputs - 1) {
+                let n = NeuronGene::new(
+                    t_nnum,
+                    crate::genes::NeuronType::Input,
+                    0,
+                    0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    ActivationFunction::SignedSigmoid,
+                );
+                genome.neuron_genes.push(n);
+                t_nnum += 1;
+            }
+            // bias
+            let n = NeuronGene::new(
+                t_nnum,
+                crate::genes::NeuronType::Bias,
+                0,
+                0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                ActivationFunction::SignedSigmoid,
+            );
+            genome.neuron_genes.push(n);
+            t_nnum += 1;
+        } else {
+            for _i in 0..inits.num_inputs {
+                let n = NeuronGene::new(
+                    t_nnum,
+                    crate::genes::NeuronType::Input,
+                    0,
+                    0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    ActivationFunction::SignedSigmoid,
+                );
+                genome.neuron_genes.push(n);
+                t_nnum += 1;
+            }
+        }
+
+        // Outputs: initialize activation params to mid-range and randomize traits
+        for _ in 0..inits.num_outputs {
+            let mut ng = NeuronGene::new(
+                t_nnum,
+                crate::genes::NeuronType::Output,
+                0,
+                0,
+                1.0,
+                (params.min_activation_a + params.max_activation_a) / 2.0,
+                (params.min_activation_b + params.max_activation_b) / 2.0,
+                (params.min_neuron_time_constant + params.max_neuron_time_constant) / 2.0,
+                (params.min_neuron_bias + params.max_neuron_bias) / 2.0,
+                inits.output_act_type,
+            );
+            // Initialize neuron traits using Parameters (mirrors C++ InitTraits)
+            ng.init_traits(&params.neuron_trait_parameters, &mut rng);
+            genome.neuron_genes.push(ng);
+            t_nnum += 1;
+        }
+
+        // Hidden / layered
+        if (inits.seed_type == GenomeSeedType::Layered) && (inits.num_hidden > 0) {
+            let lt_inc = 1.0 / (inits.num_layers as f64 + 1.0);
+            let mut initlt = lt_inc;
+            for _layer in 0..inits.num_layers {
+                for _i in 0..inits.num_hidden {
+                    let mut t_ngene = NeuronGene::new(
+                        t_nnum,
+                        crate::genes::NeuronType::Hidden,
+                        0,
+                        0,
+                        initlt,
+                        (params.min_activation_a + params.max_activation_a) / 2.0,
+                        (params.min_activation_b + params.max_activation_b) / 2.0,
+                        (params.min_neuron_time_constant + params.max_neuron_time_constant) / 2.0,
+                        (params.min_neuron_bias + params.max_neuron_bias) / 2.0,
+                        inits.hidden_act_type,
+                    );
+                    t_ngene.init_traits(&params.neuron_trait_parameters, &mut rng);
+                    genome.neuron_genes.push(t_ngene);
+                    t_nnum += 1;
+                }
+                initlt += lt_inc;
+            }
+
+            // Connect layers if not FS-NEAT: mirror C++ layered connections
+            if !inits.fs_neat {
+                let mut last_dest_id = inits.num_inputs + inits.num_outputs + 1;
+                let mut last_src_id: usize = 1;
+                let mut prev_layer_size = inits.num_inputs;
+
+                for _n in 0..inits.num_layers {
+                    for i in 0..inits.num_hidden {
+                        for j in 0..prev_layer_size {
+                            let from = (j + last_src_id) as u64;
+                            let to = (i + last_dest_id) as u64;
+                            let mut l = LinkGene::new(from, to, t_innovnum, 0.0, false);
+                            l.init_traits(&params.link_trait_parameters, &mut rng);
+                            genome.link_genes.push(l);
+                            t_innovnum += 1;
+                        }
+                    }
+
+                    last_dest_id += inits.num_hidden;
+                    if _n == 0 {
+                        last_src_id += prev_layer_size + inits.num_outputs;
+                    } else {
+                        last_src_id += prev_layer_size;
+                    }
+                    prev_layer_size = inits.num_hidden;
+                }
+
+                // Links from last hidden layer to outputs
+                let last_dest = inits.num_inputs + 1;
+                for i in 0..inits.num_outputs {
+                    for j in 0..prev_layer_size {
+                        let from = (j + last_src_id) as u64;
+                        let to = (i + last_dest) as u64;
+                        let mut l = LinkGene::new(from, to, t_innovnum, 0.0, false);
+                        l.init_traits(&params.link_trait_parameters, &mut rng);
+                        genome.link_genes.push(l);
+                        t_innovnum += 1;
+                    }
+                }
+            }
+        } else {
+            // Perceptron / fully-connected inputs->outputs when not FS-NEAT
+            if (!inits.fs_neat) && (seed_type == GenomeSeedType::Perceptron) {
+                for i in 0..inits.num_outputs {
+                    for j in 0..inits.num_inputs {
+                        let from = (j + 1) as u64;
+                        let to = (i + inits.num_inputs + 1) as u64;
+                        let mut l = LinkGene::new(from, to, t_innovnum, 0.0, false);
+                        l.init_traits(&params.link_trait_parameters, &mut rng);
+                        genome.link_genes.push(l);
+                        t_innovnum += 1;
+                    }
+                }
+            } else {
+                // Minimal connections (FS-NEAT style or small seed): connect random inputs to each output
+                let mut made_already: Vec<(usize, usize)> = Vec::new();
+                let mut linksmade = 0usize;
+                while linksmade < inits.fs_neat_links {
+                    for i in 0..inits.num_outputs {
+                        let t_inp_id = rng.random_range(1..inits.num_inputs) as usize;
+                        let t_bias_id = inits.num_inputs;
+                        let t_outp_id = inits.num_inputs + 1 + i;
+
+                        let mut there = false;
+                        for &(a, b) in &made_already {
+                            if a == t_inp_id && b == t_outp_id {
+                                there = true;
+                                break;
+                            }
+                        }
+
+                        if !there {
+                            let mut l = LinkGene::new(t_inp_id as u64, t_outp_id as u64, t_innovnum, 0.0, false);
+                            l.init_traits(&params.link_trait_parameters, &mut rng);
+                            genome.link_genes.push(l);
+                            t_innovnum += 1;
+
+                            if !params.dont_use_bias_neuron {
+                                let mut bl = LinkGene::new(t_bias_id as u64, t_outp_id as u64, t_innovnum, 0.0, false);
+                                bl.init_traits(&params.link_trait_parameters, &mut rng);
+                                genome.link_genes.push(bl);
+                                t_innovnum += 1;
+                            }
+
+                            linksmade += 1;
+                            made_already.push((t_inp_id, t_outp_id));
+                        }
+                    }
+                }
+            }
+        }
+
+        // FS-NEAT sanity check mirrored from C++
+        if inits.fs_neat && (inits.fs_neat_links == 1) {
+            panic!("Known bug - don't use FS-NEAT with just 1 link and 1/1/1 genome");
+        }
+
+        // Init genome-level traits
+        if let Some(g) = genome.genome_gene.as_mut() {
+            g.init_traits(&params.genome_trait_parameters, &mut rng);
+        }
+
+        genome.evaluated = false;
+        genome.num_inputs = inits.num_inputs;
+        genome.num_outputs = inits.num_outputs;
+        genome.fitness = 0.0;
+        genome.adjusted_fitness = 0.0;
+        genome.offspring_amount = 0.0;
+        genome.depth = 0;
+
+        genome.initial_num_neurons = genome.num_neurons();
+        genome.initial_num_links = genome.num_links();
+
+        genome
     }
 
     /// Copy constructor (clone)
@@ -211,10 +437,10 @@ impl Genome {
         // check for existing neuron innovation for this split
         let from = chosen.from_neuron_id;
         let to = chosen.to_neuron_id;
-        let nid = if let Some(existing) = innov_db.check_neuron_innovation(from, to) {
+        let nid = if let Some(existing) = innov_db.check_innovation(from, to, InnovationType::NewNeuron) {
             existing
         } else {
-            innov_db.add_neuron_innovation(from, to)
+            innov_db.add_neuron_innovation_with_type(from, to, crate::genes::NeuronType::Hidden)
         };
 
         // compute split_y
@@ -288,7 +514,7 @@ impl Genome {
             // create new innovation id
             // create or reuse innovation id
             let innov = innov_db
-                .check_link_innovation(from, to)
+                .check_innovation(from, to, InnovationType::NewLink)
                 .unwrap_or_else(|| innov_db.add_link_innovation(from, to));
             // random weight in range
             let w: f64 = rng.random_range(params.min_weight..params.max_weight);
@@ -378,7 +604,7 @@ impl Genome {
 
         if !exists {
             let innov = innov_db
-                .check_link_innovation(from, to)
+                .check_innovation(from, to, InnovationType::NewLink)
                 .unwrap_or_else(|| innov_db.add_link_innovation(from, to));
             let lg = LinkGene::new(from, to, innov, in_l.weight, false);
             self.link_genes.push(lg);
@@ -701,6 +927,49 @@ impl Genome {
             .position(|l| l.innovation_id == innov_id)
     }
 
+    /// Returns true if a neuron with given `id` exists in the genome.
+    /// This is a compact wrapper kept for API compatibility with the
+    /// original C++ `HasNeuronID` method.
+    pub fn has_neuron_id(&self, id: u64) -> bool {
+        self.get_neuron_index(id).is_some()
+    }
+
+    /// Returns true if there is a link from `from` to `to` in the genome.
+    /// Keeps API parity with C++ `HasLink(from,to)` convenience method.
+    pub fn has_link(&self, from: u64, to: u64) -> bool {
+        self.link_genes
+            .iter()
+            .any(|l| l.from_neuron_id == from && l.to_neuron_id == to)
+    }
+
+    /// Returns true if a link with the given innovation id exists.
+    /// Wrapper for API parity with C++ `HasLinkByInnovID`.
+    pub fn has_link_by_innov_id(&self, innov_id: u64) -> bool {
+        self.get_link_index(innov_id).is_some()
+    }
+
+    /// Returns (max neuron id) + 1, mirroring C++ `GetLastNeuronID` which
+    /// returned the last id + 1. If no neurons present, returns 0.
+    pub fn get_last_neuron_id(&self) -> u64 {
+        self.neuron_genes
+            .iter()
+            .map(|n| n.id)
+            .max()
+            .map(|v| v.saturating_add(1))
+            .unwrap_or(0)
+    }
+
+    /// Returns (max innovation id) + 1, mirroring C++ `GetLastInnovationID`.
+    /// If no links present, returns 0.
+    pub fn get_last_innovation_id(&self) -> u64 {
+        self.link_genes
+            .iter()
+            .map(|l| l.innovation_id)
+            .max()
+            .map(|v| v.saturating_add(1))
+            .unwrap_or(0)
+    }
+
     /// Number of neurons
     pub fn num_neurons(&self) -> usize {
         self.neuron_genes.len()
@@ -799,6 +1068,71 @@ impl Genome {
         self.offspring_amount = amount;
     }
 
+    /// Accessor: all neuron genes (borrowed)
+    pub fn neuron_genes(&self) -> &Vec<NeuronGene> {
+        &self.neuron_genes
+    }
+
+    /// Accessor: all link genes (borrowed)
+    pub fn link_genes(&self) -> &Vec<LinkGene> {
+        &self.link_genes
+    }
+
+    /// Push a neuron gene (helper for external code/tests)
+    pub fn push_neuron(&mut self, ng: NeuronGene) {
+        self.neuron_genes.push(ng);
+    }
+
+    /// Push a link gene (helper for external code/tests)
+    pub fn push_link(&mut self, lg: LinkGene) {
+        self.link_genes.push(lg);
+    }
+
+    /// Index-like accessor for a neuron gene (panics on out-of-bounds like indexing)
+    pub fn neuron_gene_at(&self, idx: usize) -> &NeuronGene {
+        &self.neuron_genes[idx]
+    }
+
+    /// Index-like accessor for a link gene (panics on out-of-bounds like indexing)
+    pub fn link_gene_at(&self, idx: usize) -> &LinkGene {
+        &self.link_genes[idx]
+    }
+
+    /// Mutable index-like accessor for a neuron gene
+    pub fn neuron_gene_at_mut(&mut self, idx: usize) -> &mut NeuronGene {
+        &mut self.neuron_genes[idx]
+    }
+
+    /// Mutable index-like accessor for a link gene
+    pub fn link_gene_at_mut(&mut self, idx: usize) -> &mut LinkGene {
+        &mut self.link_genes[idx]
+    }
+
+    /// Get immutable reference to genome-level Gene if present
+    pub fn genome_gene(&self) -> Option<&GenomeGene> {
+        self.genome_gene.as_ref()
+    }
+
+    /// Get mutable reference to genome-level Gene if present
+    pub fn genome_gene_mut(&mut self) -> Option<&mut GenomeGene> {
+        self.genome_gene.as_mut()
+    }
+
+    /// Set genome-level gene (replace existing)
+    pub fn set_genome_gene(&mut self, gg: Option<GenomeGene>) {
+        self.genome_gene = gg;
+    }
+
+    /// Set number of inputs
+    pub fn set_num_inputs(&mut self, n: usize) {
+        self.num_inputs = n;
+    }
+
+    /// Set number of outputs
+    pub fn set_num_outputs(&mut self, n: usize) {
+        self.num_outputs = n;
+    }
+
     /// Is genome evaluated
     pub fn is_evaluated(&self) -> bool {
         self.evaluated
@@ -817,6 +1151,30 @@ impl Genome {
 
 impl Genome {
     /// Build phenotype neural network from genome
+    ///
+    /// NOTE (compatibility): the Rust port intentionally initializes a
+    /// number of runtime/state fields on the phenotype neuron that the
+    /// original C++ `BuildPhenotype` relies on default constructors for.
+    /// This makes the phenotype immediately usable without depending on
+    /// hidden constructor semantics and prevents undefined or uninitialised
+    /// runtime state when the network is activated right after build.
+    ///
+    /// Initialized fields (explicitly set here):
+    /// - `activesum`, `activation`, `membrane_potential` : runtime state, set to `0.0`.
+    /// - `a`, `b`, `timeconst`, `bias` : copied from `NeuronGene` (activation params).
+    /// - `activation_function_type` : copied from `NeuronGene`.
+    /// - `x`, `y`, `z`, `sx`, `sy`, `sz` : coordinates and secondary coords; `x/y`
+    ///    are copied from the gene, others set to `0.0`.
+    /// - `substrate_coords` : set to empty `Vec` for non-HyperNEAT phenotype nodes.
+    /// - `split_y` : copied from `NeuronGene`.
+    /// - `neuron_type` : copied from `NeuronGene`.
+    /// - `sensitivity_matrix` : initialised to empty `Vec`.
+    ///
+    /// Connections: when adding connections, the Rust code checks that both
+    /// source and target neuron indices exist and *skips* the connection if
+    /// not present. The original C++ implementation uses `GetNeuronIndex`
+    /// (which asserts on missing neurons) and therefore assumes consistency
+    /// of the genome. The Rust approach is intentionally more defensive.
     pub fn build_phenotype(&self, net: &mut NeuralNetwork) {
         // Clear the network
         net.clear();

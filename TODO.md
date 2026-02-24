@@ -188,9 +188,9 @@
    - [x] чтение/запись параметров (если реализовано)
 
 3) `genome`
-   - [ ] структура `Genome` — ключевые поля (`neuron_genes`, `link_genes`, `genome_gene`, `num_inputs`, `num_outputs`)
+   - [x] структура `Genome` — ключевые поля (`neuron_genes`, `link_genes`, `genome_gene`, `num_inputs`, `num_outputs`)
    - [ ] методы: `build_phenotype`, `build_hyperneat_phenotype`, `derive_phenotypic_changes`, `mutate_*`, `randomize_link_weights`, `randomize_traits` — вручную прогонять примеры/смоук
-   - [ ] проверка `Default`/конструкторов и корректного поведения при пустых данных
+   - [x] проверка `Default`/конструкторов и корректного поведения при пустых данных
 
 4) `network` (Phenotype)
    - [ ] `NeuralNetwork::new`, `add_neuron`, `add_connection`, `input`, `activate`, `output`, `flush`, `set_input_output_dimensions`
