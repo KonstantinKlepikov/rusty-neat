@@ -149,8 +149,14 @@ impl InnovationDatabase {
         let id = self.next_innov_id;
         self.next_innov_id += 1;
         self.link_map.insert((from, to), id);
-        self.innovations
-            .push(Innovation::new(id, InnovationType::NewLink, from, to, NeuronType::Hidden, 0));
+        self.innovations.push(Innovation::new(
+            id,
+            InnovationType::NewLink,
+            from,
+            to,
+            NeuronType::Hidden,
+            0,
+        ));
         id
     }
 
@@ -165,12 +171,7 @@ impl InnovationDatabase {
 
     /// Check if an innovation exists. Returns `Some(id)` if found, otherwise `None`.
     /// For `NewLink` returns the link innovation id, for `NewNeuron` returns the neuron id.
-    pub fn check_innovation(
-        &self,
-        from: u64,
-        to: u64,
-        typ: InnovationType,
-    ) -> Option<u64> {
+    pub fn check_innovation(&self, from: u64, to: u64, typ: InnovationType) -> Option<u64> {
         match typ {
             InnovationType::NewLink => self.link_map.get(&(from, to)).copied(),
             InnovationType::NewNeuron => self.neuron_map.get(&(from, to)).copied(),
@@ -182,7 +183,10 @@ impl InnovationDatabase {
     pub fn check_last_innovation(&self, from: u64, to: u64, typ: InnovationType) -> Option<u64> {
         let mut result: Option<u64> = None;
         for innov in &self.innovations {
-            if innov.from_neuron_id() == from && innov.to_neuron_id() == to && innov.innov_type() == typ {
+            if innov.from_neuron_id() == from
+                && innov.to_neuron_id() == to
+                && innov.innov_type() == typ
+            {
                 let val = match typ {
                     InnovationType::NewLink => innov.id(),
                     InnovationType::NewNeuron => innov.neuron_id(),
@@ -199,7 +203,9 @@ impl InnovationDatabase {
             .iter()
             .enumerate()
             .filter(|(_, innov)| {
-                innov.from_neuron_id() == from && innov.to_neuron_id() == to && innov.innov_type() == typ
+                innov.from_neuron_id() == from
+                    && innov.to_neuron_id() == to
+                    && innov.innov_type() == typ
             })
             .map(|(i, _)| i)
             .collect()
@@ -214,7 +220,10 @@ impl InnovationDatabase {
     pub fn find_last_neuron_id(&self, from: u64, to: u64) -> Option<u64> {
         let mut result: Option<u64> = None;
         for innov in &self.innovations {
-            if innov.from_neuron_id() == from && innov.to_neuron_id() == to && innov.innov_type() == InnovationType::NewNeuron {
+            if innov.from_neuron_id() == from
+                && innov.to_neuron_id() == to
+                && innov.innov_type() == InnovationType::NewNeuron
+            {
                 result = Some(innov.neuron_id());
             }
         }
@@ -223,7 +232,12 @@ impl InnovationDatabase {
 
     /// Add a new neuron innovation with an explicit `NeuronType` and return the new neuron id.
     /// This is an idiomatic alternative to the previous default-typed helper.
-    pub fn add_neuron_innovation_with_type(&mut self, from: u64, to: u64, n_type: NeuronType) -> u64 {
+    pub fn add_neuron_innovation_with_type(
+        &mut self,
+        from: u64,
+        to: u64,
+        n_type: NeuronType,
+    ) -> u64 {
         if let Some(&nid) = self.neuron_map.get(&(from, to)) {
             return nid;
         }
@@ -319,7 +333,12 @@ impl InnovationDatabase {
                     };
                     let neuron_type = u8_to_neuron_type(ntype);
                     self.innovations.push(Innovation::new(
-                        id, innov_type, from, to, neuron_type, nid,
+                        id,
+                        innov_type,
+                        from,
+                        to,
+                        neuron_type,
+                        nid,
                     ));
                     match innov_type {
                         InnovationType::NewLink => {

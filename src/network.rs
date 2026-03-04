@@ -1,7 +1,7 @@
 //! Phenotype module (neural network)
 
 use crate::genes::{ActivationFunction, NeuronType};
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 
 /// Connection between neurons (phenotype)
 #[derive(Debug, Clone)]
@@ -253,8 +253,7 @@ impl NeuralNetwork {
         // compute each connection's signal first (like C++: m_signal = activation*weight)
         let neurons_len = self.neurons.len();
         for conn in &mut self.connections {
-            if conn.source_neuron_idx < neurons_len && conn.target_neuron_idx < neurons_len
-            {
+            if conn.source_neuron_idx < neurons_len && conn.target_neuron_idx < neurons_len {
                 let src = self.neurons[conn.source_neuron_idx].activation;
                 conn.signal = src * conn.weight;
             } else {
@@ -349,12 +348,20 @@ fn apply_activation(ftype: ActivationFunction, x: f64, a: f64, b: f64) -> f64 {
         }
         ActivationFunction::UnsignedSigmoid => 1.0 / (1.0 + (-a * x - b).exp()),
         ActivationFunction::Tanh => (a * x).tanh(),
-        ActivationFunction::TanhCubic => ( (x * x * x) * a ).tanh(),
+        ActivationFunction::TanhCubic => ((x * x * x) * a).tanh(),
         ActivationFunction::SignedStep => {
-            if x > b { 1.0 } else { -1.0 }
+            if x > b {
+                1.0
+            } else {
+                -1.0
+            }
         }
         ActivationFunction::UnsignedStep => {
-            if x > (0.5 + b) { 1.0 } else { 0.0 }
+            if x > (0.5 + b) {
+                1.0
+            } else {
+                0.0
+            }
         }
         ActivationFunction::SignedGauss => {
             let t = (-a * x * x + b).exp();
@@ -368,7 +375,13 @@ fn apply_activation(ftype: ActivationFunction, x: f64, a: f64, b: f64) -> f64 {
             (t + 1.0) / 2.0
         }
         ActivationFunction::Linear => x + b,
-        ActivationFunction::Relu => if x > 0.0 { x } else { 0.0 },
+        ActivationFunction::Relu => {
+            if x > 0.0 {
+                x
+            } else {
+                0.0
+            }
+        }
         ActivationFunction::Softplus => (1.0 + x.exp()).ln(),
     }
 }

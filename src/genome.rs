@@ -308,13 +308,25 @@ impl Genome {
                         }
 
                         if !there {
-                            let mut l = LinkGene::new(t_inp_id as u64, t_outp_id as u64, t_innovnum, 0.0, false);
+                            let mut l = LinkGene::new(
+                                t_inp_id as u64,
+                                t_outp_id as u64,
+                                t_innovnum,
+                                0.0,
+                                false,
+                            );
                             l.init_traits(&params.link_trait_parameters, &mut rng);
                             genome.link_genes.push(l);
                             t_innovnum += 1;
 
                             if !params.dont_use_bias_neuron {
-                                let mut bl = LinkGene::new(t_bias_id as u64, t_outp_id as u64, t_innovnum, 0.0, false);
+                                let mut bl = LinkGene::new(
+                                    t_bias_id as u64,
+                                    t_outp_id as u64,
+                                    t_innovnum,
+                                    0.0,
+                                    false,
+                                );
                                 bl.init_traits(&params.link_trait_parameters, &mut rng);
                                 genome.link_genes.push(bl);
                                 t_innovnum += 1;
@@ -444,7 +456,9 @@ impl Genome {
         // check for existing neuron innovation for this split
         let from = chosen.from_neuron_id;
         let to = chosen.to_neuron_id;
-        let nid = if let Some(existing) = innov_db.check_innovation(from, to, InnovationType::NewNeuron) {
+        let nid = if let Some(existing) =
+            innov_db.check_innovation(from, to, InnovationType::NewNeuron)
+        {
             existing
         } else {
             innov_db.add_neuron_innovation_with_type(from, to, crate::genes::NeuronType::Hidden)
@@ -510,10 +524,13 @@ impl Genome {
 
         for _ in 0..tries {
             // decide whether to pick bias as source
-            let pick_bias = rng.random::<f64>() < params.mutate_add_link_from_bias_prob && !params.dont_use_bias_neuron;
+            let pick_bias = rng.random::<f64>() < params.mutate_add_link_from_bias_prob
+                && !params.dont_use_bias_neuron;
 
             let from_idx_opt = if pick_bias {
-                self.neuron_genes.iter().position(|ng| ng.neuron_type == crate::genes::NeuronType::Bias)
+                self.neuron_genes
+                    .iter()
+                    .position(|ng| ng.neuron_type == crate::genes::NeuronType::Bias)
             } else {
                 Some(rng.random_range(0..n))
             };
@@ -1690,7 +1707,10 @@ impl Genome {
         // build map of phenotype connections (allow extra phenotype connections)
         let mut phen_map: HashMap<(usize, usize), f64> = HashMap::new();
         for conn in &net.connections {
-            phen_map.insert((conn.source_neuron_idx, conn.target_neuron_idx), conn.weight);
+            phen_map.insert(
+                (conn.source_neuron_idx, conn.target_neuron_idx),
+                conn.weight,
+            );
         }
 
         // For each genome link, find phenotype indices for its neuron IDs

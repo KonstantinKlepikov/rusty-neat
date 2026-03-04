@@ -23,15 +23,21 @@ fn test_add_and_save_load() {
     db2.load(tmp_path).expect("load failed");
     // confirm maps using the idiomatic `check_innovation`
     use rusty_neat::innovation::InnovationType;
-    assert_eq!(db2.check_innovation(1, 2, InnovationType::NewLink), Some(20));
-    assert_eq!(db2.check_innovation(2, 3, InnovationType::NewNeuron), Some(10));
+    assert_eq!(
+        db2.check_innovation(1, 2, InnovationType::NewLink),
+        Some(20)
+    );
+    assert_eq!(
+        db2.check_innovation(2, 3, InnovationType::NewNeuron),
+        Some(10)
+    );
 }
 
 // English comments required by project rules.
 // Tests for the newly added idiomatic InnovationDatabase methods.
 
-use rusty_neat::innovation::{InnovationType};
-use rusty_neat::genes::{NeuronType, LinkGene};
+use rusty_neat::genes::{LinkGene, NeuronType};
+use rusty_neat::innovation::InnovationType;
 
 #[test]
 fn test_check_and_add_link_innovation() {
@@ -69,7 +75,10 @@ fn test_check_last_innovation_behavior() {
     let _ = db.add_link_innovation(5, 6);
     let second = db.add_link_innovation(5, 6);
     // check_last_innovation should return the most recent
-    assert_eq!(db.check_last_innovation(5, 6, InnovationType::NewLink), Some(second));
+    assert_eq!(
+        db.check_last_innovation(5, 6, InnovationType::NewLink),
+        Some(second)
+    );
 }
 
 #[test]

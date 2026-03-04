@@ -1,7 +1,7 @@
 use crate::utils::{clamp_f64, clamp_i64};
 use rand::prelude::*;
-use std::collections::HashMap as StdHashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap as StdHashMap;
 
 /// Trait parameter details (simplified)
 #[derive(Debug, Clone)]

@@ -25,15 +25,20 @@ fn matching_topology_updates_weights() {
     }
 
     // ensure genome wasn't updated yet
-    assert!(g.link_genes().iter().all(|l| (l.get_weight() - 3.14).abs() > 1e-12));
+    assert!(
+        g.link_genes()
+            .iter()
+            .all(|l| (l.get_weight() - 3.14).abs() > 1e-12)
+    );
 
     g.derive_phenotypic_changes(&net);
 
     // now genome should reflect phenotype weights
-    assert!(g
-        .link_genes()
-        .iter()
-        .all(|l| (l.get_weight() - 3.14).abs() < 1e-12));
+    assert!(
+        g.link_genes()
+            .iter()
+            .all(|l| (l.get_weight() - 3.14).abs() < 1e-12)
+    );
 }
 
 #[test]
@@ -77,7 +82,11 @@ fn mismatch_count_does_not_modify_genome() {
     g.derive_phenotypic_changes(&net);
 
     // genome should have been updated for its links
-    assert!(g.link_genes().iter().all(|l| (l.get_weight() - 1.23).abs() < 1e-12));
+    assert!(
+        g.link_genes()
+            .iter()
+            .all(|l| (l.get_weight() - 1.23).abs() < 1e-12)
+    );
 }
 
 #[test]
@@ -146,6 +155,9 @@ fn mismatch_indices_does_not_modify_genome() {
         let before: Vec<f64> = g.link_genes().iter().map(|l| l.get_weight()).collect();
         g.derive_phenotypic_changes(&net);
         let after: Vec<f64> = g.link_genes().iter().map(|l| l.get_weight()).collect();
-        assert_eq!(before, after, "Genome weights should be unchanged when indices mismatch");
+        assert_eq!(
+            before, after,
+            "Genome weights should be unchanged when indices mismatch"
+        );
     }
 }

@@ -1,5 +1,5 @@
-use rusty_neat::network::{Connection, Neuron, NeuralNetwork};
 use rusty_neat::genes::{ActivationFunction, NeuronType};
+use rusty_neat::network::{Connection, NeuralNetwork, Neuron};
 
 #[test]
 fn activate_fast_sets_signal_and_propagates() {
@@ -17,7 +17,15 @@ fn activate_fast_sets_signal_and_propagates() {
     net.set_input_output_dimensions(1, 1);
 
     // connection 0 -> 1 weight 0.5
-    let conn = Connection { source_neuron_idx: 0, target_neuron_idx: 1, weight: 0.5, signal: 0.0, recur_flag:false, hebb_rate:0.0, hebb_pre_rate:0.0 };
+    let conn = Connection {
+        source_neuron_idx: 0,
+        target_neuron_idx: 1,
+        weight: 0.5,
+        signal: 0.0,
+        recur_flag: false,
+        hebb_rate: 0.0,
+        hebb_pre_rate: 0.0,
+    };
     net.add_connection(conn);
 
     // set input activation
@@ -43,9 +51,17 @@ fn activate_fast_clears_activesum_and_keeps_inputs() {
     let out_n = Neuron::new(NeuronType::Output, ActivationFunction::UnsignedSigmoid);
     net.add_neuron(in_n);
     net.add_neuron(out_n);
-    net.set_input_output_dimensions(1,1);
+    net.set_input_output_dimensions(1, 1);
 
-    let conn = Connection { source_neuron_idx: 0, target_neuron_idx: 1, weight: 1.0, signal: 0.0, recur_flag:false, hebb_rate:0.0, hebb_pre_rate:0.0 };
+    let conn = Connection {
+        source_neuron_idx: 0,
+        target_neuron_idx: 1,
+        weight: 1.0,
+        signal: 0.0,
+        recur_flag: false,
+        hebb_rate: 0.0,
+        hebb_pre_rate: 0.0,
+    };
     net.add_connection(conn);
 
     net.input(vec![0.7]);

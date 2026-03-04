@@ -12,7 +12,11 @@ fn with_minimal_false_creates_xor_example() {
 
     // weights randomized into [-0.5, 0.5]
     for c in &nn.connections {
-        assert!(c.weight >= -0.5 && c.weight <= 0.5, "weight out of range: {}", c.weight);
+        assert!(
+            c.weight >= -0.5 && c.weight <= 0.5,
+            "weight out of range: {}",
+            c.weight
+        );
     }
 
     // init_rtrl_matrix should have allocated sensitivity matrices sized n x n and zeroed them
