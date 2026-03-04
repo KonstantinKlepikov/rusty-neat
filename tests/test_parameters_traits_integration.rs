@@ -112,7 +112,8 @@ fn genome_randomize_traits_sets_values_in_basic_ranges() {
     );
 
     let mut rng = StdRng::seed_from_u64(1337);
-    g.randomize_traits(&mut rng);
+    let params = Parameters::default();
+    g.randomize_traits(&params, &mut rng);
 
     // check ranges: ints in [-5,5], floats in [-1,1]
     if let Some(TraitValue::Int(v)) = g.neuron_gene_at(0).traits.get("ti").cloned() {

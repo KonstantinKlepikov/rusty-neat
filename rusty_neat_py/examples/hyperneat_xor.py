@@ -55,7 +55,6 @@ def run(
     population_size: int = 350,
     max_generations: int = 100,
     initial_fitness: float = 0.1,
-    final_fitness: float = 0.0,
 ) -> None:
     # Setup substrate - simple 2D substrate
     # with 3 input points, 3 hidden, 1 output for XOR
@@ -118,7 +117,7 @@ def run(
     fitness = evaluate_hyperneat_xor(best, substrate)
     assert fitness >= 0  # Fitness should be non-negative
 
-    print(f'initial={initial_fitness:.2f}, ' f'final={final_fitness:.2f}')
+    print(f'initial={initial_fitness:.2f}, ' f'final={fitness:.2f}')
 
 
 if __name__ == '__main__':

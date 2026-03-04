@@ -70,6 +70,20 @@ pub enum ActivationFunction {
     Softplus,
 }
 
+impl ActivationFunction {
+    /// Derivative with respect to the post-activation value `y`.
+    /// Uses the convention from the C++ code where the derivative is computed
+    /// from the neuron's activation (not the pre-activation sum).
+    pub fn derivative(&self, y: f64) -> f64 {
+        match self {
+            ActivationFunction::UnsignedSigmoid => y * (1.0 - y),
+            ActivationFunction::Tanh => 1.0 - y * y,
+            // Fallback for unsupported derivatives: return 1.0 (neutral multiplier)
+            _ => 1.0,
+        }
+    }
+}
+
 /// Neuron type
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum NeuronType {

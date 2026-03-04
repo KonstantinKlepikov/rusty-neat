@@ -228,7 +228,7 @@ impl PyGenome {
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         let params = rusty_neat::Parameters::default();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         Ok(g.mutate_link_weights(&params, &mut rng))
     }
 
@@ -240,7 +240,7 @@ impl PyGenome {
             .write()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
         let params = rusty_neat::Parameters::default();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         g.randomize_link_weights(&params, &mut rng);
         Ok(())
     }
@@ -2303,7 +2303,7 @@ impl PyPopulation {
         }
 
         // reproduction via tournament selection + mutation
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         // copy fitnesses and parameters to avoid borrowing pop during selection/mutations
         let fitnesses: Vec<f64> = p.genomes.iter().map(|g| g.get_fitness()).collect();
         let params_clone = p.parameters.clone();
@@ -2556,7 +2556,7 @@ impl PyPopulation {
         let new_id = p.genomes.iter().map(|g| g.get_id()).max().unwrap_or(0) + 1;
         let mut g = rusty_neat::Genome::new(new_id, &rusty_neat::Parameters::default(), &ginit);
         let params_clone = p.parameters.clone();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         if rng.random::<f64>() < 0.5 {
             g.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng);
         }
@@ -2618,7 +2618,7 @@ impl PyPopulation {
         }
         let mut g = p.genomes[idx].clone();
         let params_clone = p.parameters.clone();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut applied = false;
 
         match kind.unwrap_or("all") {

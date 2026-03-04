@@ -189,11 +189,22 @@
 
 3) `genome`
    - [x] структура `Genome` — ключевые поля (`neuron_genes`, `link_genes`, `genome_gene`, `num_inputs`, `num_outputs`)
-   - [ ] методы: `build_phenotype`, `build_hyperneat_phenotype`, `derive_phenotypic_changes`, `mutate_*`, `randomize_link_weights`, `randomize_traits` — вручную прогонять примеры/смоук
+   - [x] методы: NOTE: не проверял реализацию, просто проверил что методы есть и делают туже работу
+     - [x] `build_phenotype`
+     - [x] `build_hyperneat_phenotype`
+     - [x] `derive_phenotypic_changes`
+     - [x] `mutate_*`
+     - [x] `randomize_link_weights`
+     - [x] `randomize_traits`
    - [x] проверка `Default`/конструкторов и корректного поведения при пустых данных
 
 4) `network` (Phenotype)
-   - [ ] `NeuralNetwork::new`, `add_neuron`, `add_connection`, `input`, `activate`, `output`, `flush`, `set_input_output_dimensions`
+   - [x] `Connection`
+   - [ ] `NeuralNetwork.activate()`
+   - [x] `activate_fast()`
+   - [x] `Neuron`
+   - [x] функции активации
+   - [x] `NeuralNetwork::new`, `add_neuron`, `add_connection`, `input`, `output`, `flush`, `set_input_output_dimensions`
    - [ ] консистентность `num_inputs/num_outputs` и позиционирования output нейронов
 
 5) `hyperneat` / `substrate`
@@ -216,7 +227,7 @@
 
 ### 3. Rust‑тесты (ручная проверка)
 
-- [ ] Запустить все тесты: `cargo test` — убедиться, что проходят unit‑тесты
+- [x] Запустить все тесты: `cargo test` — убедиться, что проходят unit‑тесты
 - [ ] Запустить специфичные smoke‑тесты: `cargo test --test es_hyperneat_smoke` (тесты, помеченные `#[ignore]` должны запускаться отдельно только при необходимости)
 - [ ] Проверить тесты из `tests/` папки: `parameters_traits_integration`, `traits_behavior`, `phenotype_behavior`, `mutate_*` — убедиться, что логика совпадает с ожиданиями
 

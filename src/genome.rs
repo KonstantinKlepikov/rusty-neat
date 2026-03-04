@@ -398,24 +398,31 @@ impl Genome {
             return false;
         }
 
-        // try to find a valid link to split
-        let mut tries = 256usize;
+        // try to find a valid link to split (use LinkTries param from Parameters)
         let mut chosen_idx: Option<usize> = None;
-        while tries > 0 {
+        let tries = params.link_tries as usize;
+        for _ in 0..tries {
+            if self.link_genes.is_empty() {
+                break;
+            }
             let idx = rng.random_range(0..self.link_genes.len());
             let lg = &self.link_genes[idx];
-            // skip recurrent links if not allowed
-            if lg.is_recurrent && !params.split_recurrent {
-                tries -= 1;
-                continue;
+            // If this is a looped recurrent link, only allow splitting when split_looped_recurrent is set.
+            if lg.from_neuron_id == lg.to_neuron_id {
+                if !params.split_looped_recurrent {
+                    continue;
+                }
+            } else {
+                // For non-looped links, skip recurrent links unless allowed
+                if lg.is_recurrent && !params.split_recurrent {
+                    continue;
+                }
             }
             // skip bias source splitting if policy forbids
-            if !params.dont_use_bias_neuron {
-                // if from neuron is bias (assume last input is bias)
+            if params.dont_use_bias_neuron {
                 if let Some(from_idx) = self.get_neuron_index(lg.from_neuron_id) {
                     if from_idx + 1 == self.num_inputs {
                         // bias is last input index
-                        tries -= 1;
                         continue;
                     }
                 }
@@ -493,16 +500,44 @@ impl Genome {
         if self.neuron_genes.len() < 2 {
             return false;
         }
+
+        if params.max_links >= 0 && (self.link_genes.len() as i32) >= params.max_links {
+            return false;
+        }
+
         let n = self.neuron_genes.len();
-        // try some attempts
-        for _ in 0..32 {
-            let i = rng.random_range(0..n);
-            let j = rng.random_range(0..n);
-            if i == j {
+        let tries = params.link_tries as usize;
+
+        for _ in 0..tries {
+            // decide whether to pick bias as source
+            let pick_bias = rng.random::<f64>() < params.mutate_add_link_from_bias_prob && !params.dont_use_bias_neuron;
+
+            let from_idx_opt = if pick_bias {
+                self.neuron_genes.iter().position(|ng| ng.neuron_type == crate::genes::NeuronType::Bias)
+            } else {
+                Some(rng.random_range(0..n))
+            };
+
+            if from_idx_opt.is_none() {
                 continue;
             }
-            let from = self.neuron_genes[i].id;
-            let to = self.neuron_genes[j].id;
+            let from_idx = from_idx_opt.unwrap();
+            let mut to_idx = rng.random_range(0..n);
+
+            // avoid connecting to input neurons
+            if let Some(tn) = self.neuron_genes.get(to_idx) {
+                if tn.neuron_type == crate::genes::NeuronType::Input {
+                    continue;
+                }
+            }
+
+            if from_idx == to_idx && !params.allow_loops {
+                continue;
+            }
+
+            let from = self.neuron_genes[from_idx].id;
+            let to = self.neuron_genes[to_idx].id;
+
             // skip if link exists
             if self
                 .link_genes
@@ -511,26 +546,33 @@ impl Genome {
             {
                 continue;
             }
-            // create new innovation id
+
+            // decide recurrence
+            let mut recur = false;
+            if rng.random::<f64>() < params.recurrent_prob {
+                recur = true;
+                if rng.random::<f64>() < params.recurrent_loop_prob {
+                    // attempt to make it looped recurrent if allowed
+                    if params.allow_loops {
+                        // set target to source
+                        to_idx = from_idx;
+                    }
+                }
+            }
+
+            let to = self.neuron_genes[to_idx].id;
+
             // create or reuse innovation id
             let innov = innov_db
                 .check_innovation(from, to, InnovationType::NewLink)
                 .unwrap_or_else(|| innov_db.add_link_innovation(from, to));
             // random weight in range
             let w: f64 = rng.random_range(params.min_weight..params.max_weight);
-            // decide recurrence
-            let mut recur = false;
-            if rng.random::<f64>() < params.recurrent_prob {
-                recur = true;
-                // looped recurrent?
-                if rng.random::<f64>() < params.recurrent_loop_prob {
-                    // make it looped by setting from==to
-                }
-            }
             let lg = LinkGene::new(from, to, innov, w, recur);
             self.link_genes.push(lg);
             return true;
         }
+
         false
     }
 
@@ -823,31 +865,50 @@ impl Genome {
         false
     }
 
-    /// Randomize traits for neurons, links and genome-level gene
-    pub fn randomize_traits(&mut self, rng: &mut impl Rng) {
-        for ng in self.neuron_genes.iter_mut() {
-            ng.randomize_traits_map(rng);
+    /// Randomize traits for neurons, links and genome-level gene using `Parameters`.
+    /// Falls back to simple map-based randomization when corresponding TraitParameters
+    /// are empty (keeps previous fallback behaviour).
+    pub fn randomize_traits(&mut self, params: &Parameters, rng: &mut impl Rng) {
+        if params.neuron_trait_parameters.is_empty() {
+            for ng in self.neuron_genes.iter_mut() {
+                ng.randomize_traits_map(rng);
+            }
+        } else {
+            for ng in self.neuron_genes.iter_mut() {
+                ng.init_traits(&params.neuron_trait_parameters, rng);
+            }
         }
-        for lg in self.link_genes.iter_mut() {
-            lg.randomize_traits_map(rng);
+
+        if params.link_trait_parameters.is_empty() {
+            for lg in self.link_genes.iter_mut() {
+                lg.randomize_traits_map(rng);
+            }
+        } else {
+            for lg in self.link_genes.iter_mut() {
+                lg.init_traits(&params.link_trait_parameters, rng);
+            }
         }
+
         if let Some(g) = self.genome_gene.as_mut() {
-            // implement a simple randomization for Gene's trait map
-            for (_k, v) in g.traits.iter_mut() {
-                match v {
-                    TraitValue::Int(iv) => {
-                        *iv = rng.random_range(-5i64..=5i64);
-                    }
-                    TraitValue::Float(fv) => {
-                        *fv = rng.random_range(-1.0..1.0);
-                    }
-                    TraitValue::Str(s) => {
-                        *s = String::new();
-                    }
-                    TraitValue::Bool(b) => {
-                        *b = rng.random::<bool>();
+            if params.genome_trait_parameters.is_empty() {
+                for (_k, v) in g.traits.iter_mut() {
+                    match v {
+                        TraitValue::Int(iv) => {
+                            *iv = rng.random_range(-5i64..=5i64);
+                        }
+                        TraitValue::Float(fv) => {
+                            *fv = rng.random_range(-1.0..1.0);
+                        }
+                        TraitValue::Str(s) => {
+                            *s = String::new();
+                        }
+                        TraitValue::Bool(b) => {
+                            *b = rng.random::<bool>();
+                        }
                     }
                 }
+            } else {
+                g.init_traits(&params.genome_trait_parameters, rng);
             }
         }
     }
@@ -1355,8 +1416,23 @@ impl Genome {
         self.build_phenotype(&mut t_temp_phenotype);
         t_temp_phenotype.flush();
 
-        // relaxation depth
-        let dp = 8usize;
+        // relaxation depth (match C++: use 8 or, for acyclic CPPNs, the genome depth)
+        // compute depth non-mutatingly: if acyclic, use max neuron_depth across outputs
+        let mut dp = 8usize;
+        if !self.has_loops() {
+            let mut max_depth = 0usize;
+            for ng in &self.neuron_genes {
+                if ng.neuron_type == crate::genes::NeuronType::Output {
+                    let cur = self.neuron_depth(ng.id, 0);
+                    if cur > max_depth {
+                        max_depth = cur;
+                    }
+                }
+            }
+            if max_depth > 0 {
+                dp = max_depth;
+            }
+        }
 
         // If substrate is leaky, first set neuron-specific properties
         if subst.leaky {
@@ -1597,14 +1673,49 @@ impl Genome {
     /// phenotype and genome have identical topology and copies connection
     /// weights back into the genome's `link_genes` array.
     pub fn derive_phenotypic_changes(&mut self, net: &NeuralNetwork) {
-        // If topology differs (different number of connections) do nothing.
-        if net.connections.len() < self.link_genes.len() {
-            // topology mismatch: abort
-            return;
+        // Minimal safe topology verification before copying weights from
+        // phenotype `net` into genome `link_genes`.
+        // Requirements:
+        // - same number of connections
+        // - for each link `i`, the phenotype connection at index `i` must
+        //   have the same source/target neuron indices as expected by the
+        //   genome (mapping genome neuron IDs -> phenotype indices)
+
+        // Robust mapping: build a lookup from phenotype connection endpoints
+        // (source_idx, target_idx) -> weight, then for each genome link
+        // find the phenotype indices that correspond to its neuron IDs and
+        // copy the weight if a matching phenotype connection exists.
+        use std::collections::HashMap;
+
+        // build map of phenotype connections (allow extra phenotype connections)
+        let mut phen_map: HashMap<(usize, usize), f64> = HashMap::new();
+        for conn in &net.connections {
+            phen_map.insert((conn.source_neuron_idx, conn.target_neuron_idx), conn.weight);
         }
 
-        for i in 0..self.link_genes.len() {
-            self.link_genes[i].set_weight(net.connections[i].weight);
+        // For each genome link, find phenotype indices for its neuron IDs
+        // and look up the corresponding weight. If any mapping fails, abort
+        // without modifying the genome.
+        let mut new_weights: Vec<f64> = Vec::with_capacity(self.link_genes.len());
+        for lg in &self.link_genes {
+            let src_idx = match self.get_neuron_index(lg.from_neuron_id) {
+                Some(i) => i,
+                None => return, // neuron missing -> abort
+            };
+            let dst_idx = match self.get_neuron_index(lg.to_neuron_id) {
+                Some(i) => i,
+                None => return,
+            };
+
+            match phen_map.get(&(src_idx, dst_idx)) {
+                Some(w) => new_weights.push(*w),
+                None => return, // corresponding phenotype connection not found -> abort
+            }
+        }
+
+        // All mappings succeeded -> commit weights
+        for (i, w) in new_weights.into_iter().enumerate() {
+            self.link_genes[i].set_weight(w);
         }
     }
 
