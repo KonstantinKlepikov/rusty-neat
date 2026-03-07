@@ -36,7 +36,10 @@ fn connection_exists_returns_none_for_missing_connection() {
     let mut net = NeuralNetwork::new();
     // three neurons
     for _ in 0..3 {
-        net.add_neuron(Neuron::new(NeuronType::Input, ActivationFunction::UnsignedSigmoid));
+        net.add_neuron(Neuron::new(
+            NeuronType::Input,
+            ActivationFunction::UnsignedSigmoid,
+        ));
     }
     net.set_input_output_dimensions(3, 0);
 

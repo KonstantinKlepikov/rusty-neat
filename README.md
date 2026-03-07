@@ -22,5 +22,6 @@ if fmt == 'custom_cxx' or (fmt is None and looks_like_cxx(raw)):
 ## dev
 
 - `cargo build --all --workspace && cargo test --all --workspace`
+- `cargo fmt --all`
 - `cargo doc`
 - `cargo doc --open`

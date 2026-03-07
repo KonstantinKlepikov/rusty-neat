@@ -8,7 +8,10 @@ use std::io::Cursor;
 fn save_then_load_roundtrip() {
     let mut net = NeuralNetwork::new();
 
-    net.add_neuron(Neuron::new(NeuronType::Input, ActivationFunction::UnsignedSigmoid));
+    net.add_neuron(Neuron::new(
+        NeuronType::Input,
+        ActivationFunction::UnsignedSigmoid,
+    ));
     net.add_neuron(Neuron::new(NeuronType::Output, ActivationFunction::Tanh));
     net.set_input_output_dimensions(1, 1);
 

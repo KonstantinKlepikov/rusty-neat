@@ -59,7 +59,12 @@ fn adapt_positive_weight_updates_towards_max() {
     net.adapt(&params);
 
     let got = net.connections[1].weight;
-    assert!(approx_eq(got, expected), "got {} expected {}", got, expected);
+    assert!(
+        approx_eq(got, expected),
+        "got {} expected {}",
+        got,
+        expected
+    );
 }
 
 #[test]
@@ -116,5 +121,10 @@ fn adapt_negative_weight_case_flips_sign_as_in_cpp() {
 
     net.adapt(&params);
     let got = net.connections[1].weight;
-    assert!(approx_eq(got, expected), "got {} expected {}", got, expected);
+    assert!(
+        approx_eq(got, expected),
+        "got {} expected {}",
+        got,
+        expected
+    );
 }

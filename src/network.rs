@@ -131,7 +131,6 @@ impl NeuralNetwork {
 
     /// Save network to any writer (FILE* equivalent). Port of C++ `Save(FILE*)`.
     pub fn save_writer(&self, w: &mut impl std::io::Write) -> std::io::Result<()> {
-
         // header and dims
         write!(w, "NNstart\n")?;
         write!(w, "{} {}\n", self.num_inputs, self.num_outputs)?;
@@ -185,7 +184,6 @@ impl NeuralNetwork {
 
     /// Load network from any reader (token stream). Returns `true` on success.
     pub fn load_reader(&mut self, r: &mut impl std::io::Read) -> bool {
-
         let mut s = String::new();
         if r.read_to_string(&mut s).is_err() {
             return false;
@@ -205,8 +203,14 @@ impl NeuralNetwork {
         }
 
         // read dims
-        let num_inputs = toks.next().and_then(|t| t.parse::<usize>().ok()).unwrap_or(0);
-        let num_outputs = toks.next().and_then(|t| t.parse::<usize>().ok()).unwrap_or(0);
+        let num_inputs = toks
+            .next()
+            .and_then(|t| t.parse::<usize>().ok())
+            .unwrap_or(0);
+        let num_outputs = toks
+            .next()
+            .and_then(|t| t.parse::<usize>().ok())
+            .unwrap_or(0);
 
         // clear current network
         self.clear();
@@ -217,12 +221,27 @@ impl NeuralNetwork {
             if tok == "neuron" {
                 // parse: type a b timeconst bias activation_function split_y
                 let ntype_i = toks.next().and_then(|t| t.parse::<i32>().ok()).unwrap_or(0);
-                let a = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(1.0);
-                let b = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
-                let timeconst = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
-                let bias = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
+                let a = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(1.0);
+                let b = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
+                let timeconst = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
+                let bias = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
                 let aftype_i = toks.next().and_then(|t| t.parse::<i32>().ok()).unwrap_or(0);
-                let split_y = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
+                let split_y = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
 
                 let neuron_type = match ntype_i {
                     0 => NeuronType::Input,
@@ -259,12 +278,27 @@ impl NeuralNetwork {
                 self.neurons.push(n);
             } else if tok == "connection" {
                 // parse: from to weight isrecur hebb_rate hebb_pre_rate
-                let from = toks.next().and_then(|t| t.parse::<usize>().ok()).unwrap_or(0);
-                let to = toks.next().and_then(|t| t.parse::<usize>().ok()).unwrap_or(0);
-                let weight = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
+                let from = toks
+                    .next()
+                    .and_then(|t| t.parse::<usize>().ok())
+                    .unwrap_or(0);
+                let to = toks
+                    .next()
+                    .and_then(|t| t.parse::<usize>().ok())
+                    .unwrap_or(0);
+                let weight = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
                 let isrecur = toks.next().and_then(|t| t.parse::<i32>().ok()).unwrap_or(0) != 0;
-                let hebb_rate = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
-                let hebb_pre_rate = toks.next().and_then(|t| t.parse::<f64>().ok()).unwrap_or(0.0);
+                let hebb_rate = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
+                let hebb_pre_rate = toks
+                    .next()
+                    .and_then(|t| t.parse::<f64>().ok())
+                    .unwrap_or(0.0);
 
                 self.connections.push(Connection {
                     source_neuron_idx: from,
@@ -560,7 +594,8 @@ impl NeuralNetwork {
                     * (t_max_weight - c.weight)
                     * t_incoming_neuron_activation
                     * t_outgoing_neuron_activation
-                    + c.hebb_pre_rate * t_max_weight
+                    + c.hebb_pre_rate
+                        * t_max_weight
                         * t_incoming_neuron_activation
                         * (t_outgoing_neuron_activation - 1.0);
                 c.weight = c.weight + t_delta;
@@ -569,7 +604,8 @@ impl NeuralNetwork {
                     * (t_max_weight - c.weight)
                     * t_incoming_neuron_activation
                     * (1.0 - t_outgoing_neuron_activation)
-                    - c.hebb_rate * t_max_weight
+                    - c.hebb_rate
+                        * t_max_weight
                         * t_incoming_neuron_activation
                         * t_outgoing_neuron_activation;
                 c.weight = -(c.weight + t_delta);
@@ -672,9 +708,7 @@ impl NeuralNetwork {
                             ActivationFunction::UnsignedSigmoid => {
                                 unsigned_sigmoid_derivative(self.neurons[k].activation)
                             }
-                            ActivationFunction::Tanh => {
-                                tanh_derivative(self.neurons[k].activation)
-                            }
+                            ActivationFunction::Tanh => tanh_derivative(self.neurons[k].activation),
                             _ => 0.0,
                         };
 

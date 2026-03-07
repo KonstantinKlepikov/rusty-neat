@@ -12,8 +12,14 @@ fn rtrl_update_error_updates_total_weight_change() {
     let mut net = NeuralNetwork::new();
 
     // create input (0) and output (1)
-    net.add_neuron(Neuron::new(NeuronType::Input, ActivationFunction::UnsignedSigmoid));
-    net.add_neuron(Neuron::new(NeuronType::Output, ActivationFunction::UnsignedSigmoid));
+    net.add_neuron(Neuron::new(
+        NeuronType::Input,
+        ActivationFunction::UnsignedSigmoid,
+    ));
+    net.add_neuron(Neuron::new(
+        NeuronType::Output,
+        ActivationFunction::UnsignedSigmoid,
+    ));
     net.set_input_output_dimensions(1, 1);
 
     // add a connection 0 -> 1
@@ -52,5 +58,10 @@ fn rtrl_update_error_updates_total_weight_change() {
     let expected = 0.0001 * total_error * sens;
 
     let val = net.total_weight_changes()[t_idx];
-    assert!(approx_eq(val, expected, 1e-15), "expected {} got {}", expected, val);
+    assert!(
+        approx_eq(val, expected, 1e-15),
+        "expected {} got {}",
+        expected,
+        val
+    );
 }

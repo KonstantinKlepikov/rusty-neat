@@ -12,8 +12,14 @@ fn rtrl_update_gradients_unsigned_sigmoid_basic() {
     let mut net = NeuralNetwork::new();
 
     // create input (0) and output (1)
-    net.add_neuron(Neuron::new(NeuronType::Input, ActivationFunction::UnsignedSigmoid));
-    net.add_neuron(Neuron::new(NeuronType::Output, ActivationFunction::UnsignedSigmoid));
+    net.add_neuron(Neuron::new(
+        NeuronType::Input,
+        ActivationFunction::UnsignedSigmoid,
+    ));
+    net.add_neuron(Neuron::new(
+        NeuronType::Output,
+        ActivationFunction::UnsignedSigmoid,
+    ));
     net.set_input_output_dimensions(1, 1);
 
     // add a connection 0 -> 1
@@ -43,10 +49,19 @@ fn rtrl_update_gradients_unsigned_sigmoid_basic() {
     let expected = deriv * 0.6; // 0.144
 
     let val = net.neurons[1].sensitivity_matrix[1][0];
-    assert!(approx_eq(val, expected, 1e-12), "expected {} got {}", expected, val);
+    assert!(
+        approx_eq(val, expected, 1e-12),
+        "expected {} got {}",
+        expected,
+        val
+    );
 
     // entry for j=1 should be zero (no connection 1->1)
-    assert!(approx_eq(net.neurons[1].sensitivity_matrix[1][1], 0.0, 1e-12));
+    assert!(approx_eq(
+        net.neurons[1].sensitivity_matrix[1][1],
+        0.0,
+        1e-12
+    ));
 }
 
 // Tanh activation uses derivative 1 - y^2
@@ -54,7 +69,10 @@ fn rtrl_update_gradients_unsigned_sigmoid_basic() {
 fn rtrl_update_gradients_tanh_derivative() {
     let mut net = NeuralNetwork::new();
 
-    net.add_neuron(Neuron::new(NeuronType::Input, ActivationFunction::UnsignedSigmoid));
+    net.add_neuron(Neuron::new(
+        NeuronType::Input,
+        ActivationFunction::UnsignedSigmoid,
+    ));
     // use TANH for output
     let out = Neuron::new(NeuronType::Output, ActivationFunction::Tanh);
     net.add_neuron(out);
@@ -81,5 +99,10 @@ fn rtrl_update_gradients_tanh_derivative() {
     let expected = deriv * 0.2; // 0.15
 
     let val = net.neurons[1].sensitivity_matrix[1][0];
-    assert!(approx_eq(val, expected, 1e-12), "expected {} got {}", expected, val);
+    assert!(
+        approx_eq(val, expected, 1e-12),
+        "expected {} got {}",
+        expected,
+        val
+    );
 }
