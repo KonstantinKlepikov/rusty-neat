@@ -1,3 +1,4 @@
+// Tests for `activate_fast` behavior: propagation and state clearing
 use rusty_neat::genes::{ActivationFunction, NeuronType};
 use rusty_neat::network::{Connection, NeuralNetwork, Neuron};
 
@@ -44,6 +45,7 @@ fn activate_fast_sets_signal_and_propagates() {
     assert!((out[0] - expected).abs() < 1e-12);
 }
 
+// Activation should clear activesum but preserve input activations
 #[test]
 fn activate_fast_clears_activesum_and_keeps_inputs() {
     let mut net = NeuralNetwork::new();

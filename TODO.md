@@ -200,12 +200,12 @@
 
 4) `network` (Phenotype)
    - [x] `Connection`
-   - [ ] `NeuralNetwork.activate()`
+   - [x] `NeuralNetwork.activate()`
    - [x] `activate_fast()`
    - [x] `Neuron`
    - [x] функции активации
    - [x] `NeuralNetwork::new`, `add_neuron`, `add_connection`, `input`, `output`, `flush`, `set_input_output_dimensions`
-   - [ ] консистентность `num_inputs/num_outputs` и позиционирования output нейронов
+   - [x] консистентность `num_inputs/num_outputs` и позиционирования output нейронов
 
 5) `hyperneat` / `substrate`
    - [ ] `Substrate::new`, `with_coords`, `get_min_cppn_inputs`, `get_min_cppn_outputs`, `get_max_dims`, `set_neurons`, `print_info`
