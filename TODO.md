@@ -215,7 +215,7 @@
    - [x] `get_max_dims`
    - [x] `set_neurons`
    - [x] `print_info`
-   - [ ] Rust-реализация не содержит прямой поддержки сериализации/pickle в модуле (это делается на уровне биндингов). C++ содержит перегрузки и Python-специфику прямо в классе (boost::python), Rust полагается на PyO3 обёртку (rusty_neat_py) для этих задач.
+   - [x] Rust-реализация не содержит прямой поддержки сериализации/pickle в модуле (это делается на уровне биндингов). C++ содержит перегрузки и Python-специфику прямо в классе (boost::python), Rust полагается на PyO3 обёртку (rusty_neat_py) для этих задач.
    - [x] флаги: `allow_*`, `with_distance`, `leaky`, `query_weights_only`, `custom_connectivity`
    - [x] интеграция: `Genome::build_hyperneat_phenotype(net, subst)` — проверить на простых CPPN (см. тест `es_hyperneat_smoke.rs`)
 

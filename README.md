@@ -2,6 +2,10 @@
 
 Multy-NEAT rust implementation.
 
+Warning: AI-migrated code.
+
+Warning: steel in work.
+
 Warning: Pickle files produced by the original C++ MultiNEAT are not guaranteed to be compatible with Rusty-NEAT.
 
 Pickle files produced by the original C++ implementation of MultiNEAT are not guaranteed to be compatible with `rusty_neat` serialization. Directly loading C++ pickles with the Python bindings (`rusty_neat_py`) may result in deserialization errors. We recommend exporting data from the C++ implementation to JSON (or another neutral format) or using the provided migration utilities when transferring data between implementations.
@@ -25,3 +29,7 @@ if fmt == 'custom_cxx' or (fmt is None and looks_like_cxx(raw)):
 - `cargo fmt --all`
 - `cargo doc`
 - `cargo doc --open`
+
+## General source
+
+This library is based on c++ [MultiNEAT](https://github.com/peter-ch/MultiNEAT)
