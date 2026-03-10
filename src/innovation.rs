@@ -273,12 +273,17 @@ impl InnovationDatabase {
     /// with the cneat r1 port format.
     pub fn save(&self, filename: &str) -> IoResult<()> {
         let mut f = File::create(filename)?;
-        writeln!(f, "InnovationDatabaseStart")?;
-        writeln!(f, "NextInnovNum: {}", self.next_innov_id)?;
-        writeln!(f, "NextNeuronID: {}", self.next_neuron_id)?;
+        self.save_to_writer(&mut f)
+    }
+
+    /// Save database to any writer (helper variant used when composing larger files)
+    pub fn save_to_writer<W: Write>(&self, w: &mut W) -> IoResult<()> {
+        writeln!(w, "InnovationDatabaseStart")?;
+        writeln!(w, "NextInnovNum: {}", self.next_innov_id)?;
+        writeln!(w, "NextNeuronID: {}", self.next_neuron_id)?;
         for innov in &self.innovations {
             writeln!(
-                f,
+                w,
                 "Innovation {} {} {} {} {} {}",
                 innov.id(),
                 match innov.innov_type() {
@@ -291,7 +296,7 @@ impl InnovationDatabase {
                 innov.neuron_id(),
             )?;
         }
-        writeln!(f, "InnovationDatabaseEnd")?;
+        writeln!(w, "InnovationDatabaseEnd")?;
         Ok(())
     }
 

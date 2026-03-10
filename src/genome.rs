@@ -2,16 +2,16 @@
 
 // === Imports analogous to C++ standard and Boost libraries ===
 use crate::genes::{ActivationFunction, Gene as GenomeGene, LinkGene, NeuronGene, TraitValue};
-use crate::hyperneat::Substrate;
 use crate::innovation::{InnovationDatabase, InnovationType};
 use crate::network::{Connection as PhConnection, NeuralNetwork, Neuron as PhNeuron};
 use crate::parameters::Parameters;
+use crate::substrate::Substrate;
 use crate::utils::{clamp_f64, scale_f64};
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fs::File;
-use std::io::{BufReader, Read, Result as IoResult};
+use std::io::{BufReader, Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenomeSeedType {
@@ -58,12 +58,22 @@ impl PhenotypeBehavior {
     /// Compute distance to another behavior. Default returns 0.0. Override
     /// when implementing a meaningful metric.
     pub fn distance_to(&self, other: &PhenotypeBehavior) -> f64 {
-        // Default: simple zero-distance. Domain code should override.
-        if self.m_data == other.m_data {
-            0.0
-        } else {
-            0.0
+        // Compute Euclidean distance between flattened m_data matrices.
+        // Treat missing entries as 0.0 so matrices of different sizes are supported.
+        let mut sum_sq = 0.0f64;
+        let max_rows = self.m_data.len().max(other.m_data.len());
+        for i in 0..max_rows {
+            let row_a: &[f64] = self.m_data.get(i).map(|v| v.as_slice()).unwrap_or(&[]);
+            let row_b: &[f64] = other.m_data.get(i).map(|v| v.as_slice()).unwrap_or(&[]);
+            let max_cols = row_a.len().max(row_b.len());
+            for j in 0..max_cols {
+                let a = row_a.get(j).copied().unwrap_or(0.0);
+                let b = row_b.get(j).copied().unwrap_or(0.0);
+                let d = a - b;
+                sum_sq += d * d;
+            }
         }
+        sum_sq.sqrt()
     }
 
     /// Whether the behavior is considered successful. Default returns true.
@@ -375,9 +385,183 @@ impl Genome {
         let mut reader: BufReader<File> = BufReader::new(file);
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
-        // TODO: parse contents into Genome
-        // For now, return a default Genome
-        Ok(Genome::default())
+        // Basic convenience: parse the first GenomeStart..GenomeEnd block
+        Genome::load_from_str(&contents)
+    }
+}
+
+impl Genome {
+    /// Save genome to a writer in a simple text format.
+    pub fn save_to_writer<W: Write>(&self, w: &mut W) -> IoResult<()> {
+        writeln!(w, "GenomeStart")?;
+        writeln!(w, "ID: {}", self.id)?;
+        writeln!(w, "NumInputs: {}", self.num_inputs)?;
+        writeln!(w, "NumOutputs: {}", self.num_outputs)?;
+        writeln!(w, "Fitness: {}", self.fitness)?;
+        writeln!(w, "AdjustedFitness: {}", self.adjusted_fitness)?;
+
+        writeln!(w, "Neurons: {}", self.neuron_genes.len())?;
+        for n in &self.neuron_genes {
+            writeln!(
+                w,
+                "Neuron {} {} {} {} {} {} {} {} {} {}",
+                n.id,
+                match n.neuron_type {
+                    crate::genes::NeuronType::Input => 0,
+                    crate::genes::NeuronType::Output => 1,
+                    crate::genes::NeuronType::Hidden => 2,
+                    crate::genes::NeuronType::Bias => 3,
+                },
+                n.x,
+                n.y,
+                n.split_y,
+                n.a,
+                n.b,
+                n.timeconstant,
+                n.bias,
+                match n.activation_function {
+                    crate::genes::ActivationFunction::SignedSigmoid => 0,
+                    crate::genes::ActivationFunction::UnsignedSigmoid => 1,
+                    crate::genes::ActivationFunction::Tanh => 2,
+                    crate::genes::ActivationFunction::TanhCubic => 3,
+                    crate::genes::ActivationFunction::SignedStep => 4,
+                    crate::genes::ActivationFunction::UnsignedStep => 5,
+                    crate::genes::ActivationFunction::SignedGauss => 6,
+                    crate::genes::ActivationFunction::UnsignedGauss => 7,
+                    crate::genes::ActivationFunction::Abs => 8,
+                    crate::genes::ActivationFunction::SignedSine => 9,
+                    crate::genes::ActivationFunction::UnsignedSine => 10,
+                    crate::genes::ActivationFunction::Linear => 11,
+                    crate::genes::ActivationFunction::Relu => 12,
+                    crate::genes::ActivationFunction::Softplus => 13,
+                }
+            )?;
+        }
+
+        writeln!(w, "Links: {}", self.link_genes.len())?;
+        for l in &self.link_genes {
+            writeln!(
+                w,
+                "Link {} {} {} {} {}",
+                l.from_neuron_id,
+                l.to_neuron_id,
+                l.innovation_id,
+                l.weight,
+                if l.is_recurrent { 1 } else { 0 }
+            )?;
+        }
+
+        writeln!(w, "GenomeEnd")?;
+        Ok(())
+    }
+
+    /// Parse a genome from a string containing one or more GenomeStart..GenomeEnd blocks.
+    pub fn load_from_str(s: &str) -> IoResult<Self> {
+        use std::io::{Error, ErrorKind};
+
+        let mut in_block = false;
+        let mut lines = s.lines();
+        let mut g = Genome::default();
+        while let Some(l) = lines.next() {
+            let line = l.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if line == "GenomeStart" {
+                in_block = true;
+                continue;
+            }
+            if !in_block {
+                continue;
+            }
+            if line == "GenomeEnd" {
+                return Ok(g);
+            }
+            if let Some(rest) = line.strip_prefix("ID:") {
+                g.id = rest.trim().parse().unwrap_or(0);
+            } else if let Some(rest) = line.strip_prefix("NumInputs:") {
+                g.num_inputs = rest.trim().parse().unwrap_or(0);
+            } else if let Some(rest) = line.strip_prefix("NumOutputs:") {
+                g.num_outputs = rest.trim().parse().unwrap_or(0);
+            } else if let Some(rest) = line.strip_prefix("Fitness:") {
+                g.fitness = rest.trim().parse().unwrap_or(0.0);
+            } else if let Some(rest) = line.strip_prefix("AdjustedFitness:") {
+                g.adjusted_fitness = rest.trim().parse().unwrap_or(0.0);
+            } else if let Some(rest) = line.strip_prefix("Neurons:") {
+                let cnt: usize = rest.trim().parse().unwrap_or(0);
+                for _ in 0..cnt {
+                    if let Some(nl) = lines.next() {
+                        let toks: Vec<&str> = nl.split_whitespace().collect();
+                        if toks.len() >= 11 && toks[0] == "Neuron" {
+                            let id: u64 = toks[1].parse().unwrap_or(0);
+                            let typ: u8 = toks[2].parse().unwrap_or(2);
+                            let x: i32 = toks[3].parse().unwrap_or(0);
+                            let y: i32 = toks[4].parse().unwrap_or(0);
+                            let split_y: f64 = toks[5].parse().unwrap_or(0.0);
+                            let a: f64 = toks[6].parse().unwrap_or(0.0);
+                            let b: f64 = toks[7].parse().unwrap_or(0.0);
+                            let timeconstant: f64 = toks[8].parse().unwrap_or(0.0);
+                            let bias: f64 = toks[9].parse().unwrap_or(0.0);
+                            let act_u8: u8 = toks[10].parse().unwrap_or(11);
+                            let neuron_type = match typ {
+                                0 => crate::genes::NeuronType::Input,
+                                1 => crate::genes::NeuronType::Output,
+                                3 => crate::genes::NeuronType::Bias,
+                                _ => crate::genes::NeuronType::Hidden,
+                            };
+                            let activation = match act_u8 {
+                                0 => crate::genes::ActivationFunction::SignedSigmoid,
+                                1 => crate::genes::ActivationFunction::UnsignedSigmoid,
+                                2 => crate::genes::ActivationFunction::Tanh,
+                                3 => crate::genes::ActivationFunction::TanhCubic,
+                                4 => crate::genes::ActivationFunction::SignedStep,
+                                5 => crate::genes::ActivationFunction::UnsignedStep,
+                                6 => crate::genes::ActivationFunction::SignedGauss,
+                                7 => crate::genes::ActivationFunction::UnsignedGauss,
+                                8 => crate::genes::ActivationFunction::Abs,
+                                9 => crate::genes::ActivationFunction::SignedSine,
+                                10 => crate::genes::ActivationFunction::UnsignedSine,
+                                11 => crate::genes::ActivationFunction::Linear,
+                                12 => crate::genes::ActivationFunction::Relu,
+                                13 => crate::genes::ActivationFunction::Softplus,
+                                _ => crate::genes::ActivationFunction::Linear,
+                            };
+                            let ng = crate::genes::NeuronGene::new(
+                                id,
+                                neuron_type,
+                                x,
+                                y,
+                                split_y,
+                                a,
+                                b,
+                                timeconstant,
+                                bias,
+                                activation,
+                            );
+                            g.push_neuron(ng);
+                        }
+                    }
+                }
+            } else if let Some(rest) = line.strip_prefix("Links:") {
+                let cnt: usize = rest.trim().parse().unwrap_or(0);
+                for _ in 0..cnt {
+                    if let Some(ll) = lines.next() {
+                        let toks: Vec<&str> = ll.split_whitespace().collect();
+                        if toks.len() >= 6 && toks[0] == "Link" {
+                            let from: u64 = toks[1].parse().unwrap_or(0);
+                            let to: u64 = toks[2].parse().unwrap_or(0);
+                            let innov: u64 = toks[3].parse().unwrap_or(0);
+                            let weight: f64 = toks[4].parse().unwrap_or(0.0);
+                            let is_rec: i32 = toks[5].parse().unwrap_or(0);
+                            let lg =
+                                crate::genes::LinkGene::new(from, to, innov, weight, is_rec != 0);
+                            g.push_link(lg);
+                        }
+                    }
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::InvalidData, "No Genome block found"))
     }
 }
 
@@ -1104,6 +1288,26 @@ impl Genome {
     /// Set fitness
     pub fn set_fitness(&mut self, fitness: f64) {
         self.fitness = fitness;
+    }
+
+    /// Get a reference to phenotype behavior if present
+    pub fn get_phenotype_behavior(&self) -> Option<&PhenotypeBehavior> {
+        self.phenotype_behavior.as_ref()
+    }
+
+    /// Get a mutable reference to phenotype behavior if present
+    pub fn get_phenotype_behavior_mut(&mut self) -> Option<&mut PhenotypeBehavior> {
+        self.phenotype_behavior.as_mut()
+    }
+
+    /// Set/replace phenotype behavior
+    pub fn set_phenotype_behavior(&mut self, pb: Option<PhenotypeBehavior>) {
+        self.phenotype_behavior = pb;
+    }
+
+    /// Take ownership of phenotype behavior (sets to None)
+    pub fn take_phenotype_behavior(&mut self) -> Option<PhenotypeBehavior> {
+        self.phenotype_behavior.take()
     }
 
     /// Get adjusted fitness

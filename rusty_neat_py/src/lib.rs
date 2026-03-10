@@ -4,7 +4,6 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use rand::Rng;
 use serde_json::json;
-use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
@@ -2273,80 +2272,26 @@ impl PyPopulation {
     /// Generational epoch: selection, reproduce (tournament), mutate, speciate (simple)
     #[allow(deprecated)]
     fn epoch(&mut self) -> PyResult<u64> {
-        // Generational evolutionary step:
-        // - keep a small elite fraction
-        // - fill remaining slots by tournament selection + mutation
-        let mut p = self
+        // Delegate the heavy-lifting to the Rust Population::epoch implementation
+        // and release the Python GIL while it runs. Create RNG inside the
+        // closure so we don't capture a non-Send `ThreadRng` across the boundary.
+        Python::with_gil(|py| {
+            py.allow_threads(|| -> PyResult<()> {
+                let mut rng = rand::rng();
+                let mut p = self
+                    .inner
+                    .write()
+                    .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
+                p.epoch(&mut rng);
+                Ok(())
+            })
+        })?;
+
+        // return updated generation counter
+        let p = self
             .inner
-            .write()
+            .read()
             .map_err(|_| PyRuntimeError::new_err("lock poisoned"))?;
-        let n = p.genomes.len();
-        if n == 0 {
-            p.generation += 1;
-            return Ok(p.generation);
-        }
-
-        // build sorted index list by fitness (desc)
-        let mut idxs: Vec<usize> = (0..n).collect();
-        idxs.sort_by(|&a, &b| {
-            let fa = p.genomes[a].get_fitness();
-            let fb = p.genomes[b].get_fitness();
-            fb.partial_cmp(&fa).unwrap_or(Ordering::Equal)
-        });
-
-        let elite_count = std::cmp::max(1, ((n as f64) * 0.1).ceil() as usize);
-        let mut new_genomes: Vec<rusty_neat::Genome> = Vec::new();
-
-        // copy elites
-        for &i in idxs.iter().take(elite_count) {
-            new_genomes.push(p.genomes[i].clone());
-        }
-
-        // reproduction via tournament selection + mutation
-        let mut rng = rand::rng();
-        // copy fitnesses and parameters to avoid borrowing pop during selection/mutations
-        let fitnesses: Vec<f64> = p.genomes.iter().map(|g| g.get_fitness()).collect();
-        let params_clone = p.parameters.clone();
-        while new_genomes.len() < n {
-            // tournament selection (size 3)
-            let mut best_idx: usize = 0;
-            let mut best_f = std::f64::NEG_INFINITY;
-            for _ in 0..3 {
-                let r = rng.random_range(0..n);
-                let f = fitnesses[r];
-                if f > best_f {
-                    best_f = f;
-                    best_idx = r;
-                }
-            }
-
-            let parent = p.genomes[best_idx].clone();
-            let mut child = parent.clone();
-
-            // weight mutation
-            if rng.random::<f64>() < params_clone.weight_mutation_rate {
-                child.mutate_link_weights(&params_clone, &mut rng);
-            }
-
-            // structural mutations with small probabilities
-            if rng.random::<f64>() < 0.05 {
-                child.mutate_add_link(&mut p.innovation_db, &params_clone, &mut rng);
-            }
-            if rng.random::<f64>() < 0.02 {
-                child.mutate_add_neuron(&mut p.innovation_db, &params_clone, &mut rng);
-            }
-            if rng.random::<f64>() < 0.02 {
-                child.mutate_remove_link(&params_clone, &mut rng);
-            }
-            if rng.random::<f64>() < 0.01 {
-                child.mutate_remove_simple_neuron(&mut p.innovation_db, &params_clone, &mut rng);
-            }
-
-            new_genomes.push(child);
-        }
-
-        p.genomes = new_genomes;
-        p.generation += 1;
         Ok(p.generation)
     }
 

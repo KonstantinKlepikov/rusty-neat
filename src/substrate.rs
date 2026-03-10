@@ -1,4 +1,4 @@
-//! HyperNEAT module: substrate, CPPN
+//! Substrate module: lightweight Substrate used by HyperNEAT pipeline
 use crate::genes::ActivationFunction;
 
 /// Minimal Substrate structure carrying the fields required by the
@@ -160,14 +160,4 @@ impl Substrate {
     pub fn clear_custom_connectivity(&mut self) {
         self.custom_connectivity.clear();
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct CPPNGenome {
-    // placeholder for compatibility
-}
-
-#[derive(Debug, Clone)]
-pub struct CPPNNetwork {
-    // placeholder for compatibility
 }

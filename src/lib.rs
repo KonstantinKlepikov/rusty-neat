@@ -1,6 +1,7 @@
 pub mod genes;
 pub mod genome;
-pub mod hyperneat;
+pub mod substrate;
+// pub mod hyperneat;
 pub mod innovation;
 pub mod network;
 pub mod parameters;
@@ -16,6 +17,7 @@ pub use parameters::*;
 pub use population::*;
 pub use random::*;
 pub use species::*;
+pub use substrate::*;
 // pub use serialization::*;
-pub use hyperneat::*;
+// pub use hyperneat::*;
 pub use utils::*;
